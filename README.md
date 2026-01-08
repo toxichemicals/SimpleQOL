@@ -10,17 +10,3 @@
 * **Modular Power**: Enable SSL or libcurl only when you need them via macros.
 * **Cross-Platform**: Unified API for path normalization, sleeping, and networking.
 * **Built-in JSON**: Lightweight non-recursive JSON object builder.
-
----
-
-## 🛠 Modules & API Examples
-
-### 1. SimpleFS (File System)
-Handle files without worrying about `/` vs `\` slashes.
-```c
-char* content = fs_read("data/config.txt");
-if (content) {
-    printf("File size: %ld\n", fs_size("data/config.txt"));
-    free(content);
-}
-fs_write("log.txt", "Operation Successful");
