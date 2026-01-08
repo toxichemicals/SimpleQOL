@@ -7,17 +7,17 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
     <style>
         :root { --brand: #00adb5; --bg-code: #1c2128; --border: #30363d; }
+        body { max-width: 1000px; }
         nav { position: sticky; top: 0; background: #161b22; padding: 15px; border-bottom: 2px solid var(--brand); z-index: 9999; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
-        nav a { font-weight: bold; text-decoration: none; font-size: 0.9em; }
+        nav a { font-weight: bold; text-decoration: none; font-size: 0.85em; }
         .fn-card { background: var(--bg-code); border: 1px solid var(--border); padding: 25px; border-radius: 10px; margin-bottom: 30px; }
-        .fn-sig { color: #e94560; font-family: 'Fira Code', monospace; font-size: 1.2em; font-weight: bold; display: block; margin-bottom: 10px; }
+        .fn-sig { color: #e94560; font-family: 'Fira Code', 'Courier New', monospace; font-size: 1.15em; font-weight: bold; display: block; margin-bottom: 10px; }
         .tag { padding: 4px 8px; border-radius: 5px; font-size: 0.7em; font-weight: 800; text-transform: uppercase; margin-right: 8px; vertical-align: middle; }
         .tag-malloc { background: #cf6679; color: black; }
         .tag-win { background: #0078d4; color: white; }
         .tag-lin { background: #fcc624; color: black; }
         .tag-macro { background: #bb86fc; color: black; }
-        .example { background: #0d1117; padding: 15px; border-left: 4px solid var(--brand); margin-top: 15px; font-family: monospace; white-space: pre-wrap; }
-        .param-list { font-size: 0.9em; margin: 10px 0; color: #8b949e; }
+        .example { background: #0d1117; padding: 15px; border-left: 4px solid var(--brand); margin-top: 15px; font-family: monospace; white-space: pre-wrap; color: #adbac7; }
         h2 { border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-top: 70px; color: var(--brand); }
         .os-box { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         @media (max-width: 600px) { .os-box { grid-template-columns: 1fr; } }
@@ -25,229 +25,187 @@
 </head>
 <body>
 
-<header style="text-align:center; padding: 50px 0;">
+<header style="text-align:center; padding: 40px 0;">
     <h1>QOL.h Documentation</h1>
-    <p>Comprehensive API Reference & Compilation Guide</p>
-    <p class="tag tag-macro">Apache 2.0 License</p>
+    <p>The "Quality of Life" single-header C library.</p>
+    <p><strong>Version 1.1</strong> | Apache 2.0 License</p>
 </header>
 
 <nav>
-    <a href="#compiler">Compiler Guide</a>
-    <a href="#macros">Macros & Optimization</a>
+    <a href="#guide">Compiling</a>
     <a href="#fs">SimpleFS</a>
     <a href="#http">SimpleHTTP</a>
     <a href="#net">SimpleNet</a>
     <a href="#tools">SimpleTools</a>
 </nav>
 
-<section id="compiler">
-    <h2>1. Compiler & OS Integration</h2>
-    <p>QOL.h is cross-platform but requires specific linker flags for networking and SSL.</p>
+<section id="guide">
+    <h2>1. Integration & Compiler Guide</h2>
+    <p>QOL.h works on Windows (MinGW/MSVC) and Linux (GCC/Clang). Because it handles networking and crypto, you must link specific libraries.</p>
 
     <div class="os-box">
         <div class="fn-card">
-            <h4><span class="tag tag-win">Windows (MinGW/GCC)</span></h4>
-            <p>Always link <strong>WinSock2</strong> for any networking feature.</p>
-            <code>gcc main.c -o app.exe -lws2_32</code>
+            <h4><span class="tag tag-lin">Linux</span></h4>
+            <p>Standard build:</p>
+            <code>gcc main.c -o app</code>
+            <p style="margin-top:10px">With Curl/SSL:</p>
+            <code>gcc main.c -lcurl -lssl -lcrypto</code>
         </div>
         <div class="fn-card">
-            <h4><span class="tag tag-lin">Linux (GCC/Clang)</span></h4>
-            <p>Standard features require no flags. SSL/Curl require their respective libs.</p>
-            <code>gcc main.c -o app</code>
+            <h4><span class="tag tag-win">Windows</span></h4>
+            <p>Standard build (Must link WinSock):</p>
+            <code>gcc main.c -lws2_32</code>
+            <p style="margin-top:10px">With Curl/SSL:</p>
+            <code>gcc main.c -lcurl -lssl -lcrypto -lws2_32</code>
         </div>
     </div>
 
-    <h3>Advanced Linking</h3>
-    <p>If you use <code>HTTP_CURL</code> or <code>HTTP_SSL</code>, you must add these flags:</p>
+    <h3>Flags & Macros</h3>
     <ul>
-        <li><strong>libcurl:</strong> Add <code>-lcurl</code></li>
-        <li><strong>OpenSSL:</strong> Add <code>-lssl -lcrypto</code></li>
+        <li><code>#define HTTP_CURL</code>: Enables <code>http_request()</code> using libcurl.</li>
+        <li><code>#define HTTP_SSL</code>: Enables SSL termination for <code>http_host_ssl()</code>.</li>
+        <li><code>#define MAX_HTTP_BUF [size]</code>: Overrides the internal 64KB buffer limit.</li>
     </ul>
+
+    <h3>Modular Usage</h3>
+    <p>Don't want the whole 1000+ line file? Include only the headers from the source folders:</p>
+    <div class="example">#include "SimpleFS/simple_fs.h" // Only FS tools</div>
 </section>
 
-<section id="macros">
-    <h2>2. Macros & Manual Optimization</h2>
-    <p>Control the behavior of the library before including the header.</p>
 
-    <div class="fn-card">
-        <span class="fn-sig">#define MAX_HTTP_BUF [size]</span>
-        <p>Overrides the default 64KB networking buffer. Useful for embedded systems.</p>
-        <div class="example">#define MAX_HTTP_BUF 4096<br>#include "QOL.h"</div>
-    </div>
-
-    <div class="fn-card">
-        <span class="fn-sig">#define HTTP_CURL</span>
-        <p>Enables high-level HTTP client requests via libcurl.</p>
-    </div>
-
-    <div class="fn-card">
-        <span class="fn-sig">#define HTTP_SSL</span>
-        <p>Enables SSL Termination for the HTTP Server.</p>
-    </div>
-
-    <h3>Individual Header Usage</h3>
-    <p>To optimize for binary size, you can skip the amalgamated <code>QOL.h</code> and include only what you need:</p>
-    <div class="example">
-// Use only the File System module
-#include "SimpleFS/simple_fs.h" 
-    </div>
-</section>
 
 <section id="fs">
-    <h2>3. SimpleFS API</h2>
-    
+    <h2>2. SimpleFS (File Systems)</h2>
+    <p>All paths are normalized (<code>/</code> vs <code>\</code>) automatically.</p>
+
     <div class="fn-card">
         <span class="fn-sig">long fs_size(const char* filename)</span>
-        <p>Returns file size in bytes. Returns -1 if file not found.</p>
-        <div class="example">long b = fs_size("image.png");</div>
+        <p>Returns the file size in bytes. Returns -1 if file is inaccessible.</p>
     </div>
 
     <div class="fn-card">
         <span class="fn-sig">char* fs_read(const char* filename) <span class="tag tag-malloc">MALLOC</span></span>
-        <p>Reads entire file into a heap-allocated string.</p>
-        <div class="example">char* txt = fs_read("note.txt");<br>if(txt) { printf("%s", txt); free(txt); }</div>
-    </div>
-
-    <div class="fn-card">
-        <span class="fn-sig">int fs_write(const char* filename, const char* data)</span>
-        <p>Overwrites file with data string.</p>
-        <div class="example">fs_write("out.txt", "Hello World");</div>
-    </div>
-
-    <div class="fn-card">
-        <span class="fn-sig">int fs_append(const char* filename, const char* data)</span>
-        <p>Appends data string to end of file.</p>
-        <div class="example">fs_append("logs.txt", "New Error\n");</div>
-    </div>
-
-    <div class="fn-card">
-        <span class="fn-sig">int fs_exists(const char* filename)</span>
-        <p>Returns 1 if file exists.</p>
-        <div class="example">if(fs_exists("config.json")) { ... }</div>
+        <p>Reads entire file into a null-terminated string. <strong>Warning:</strong> Do not use on infinite files like /dev/urandom.</p>
+        <div class="example">char* s = fs_read("test.txt"); free(s);</div>
     </div>
 
     <div class="fn-card">
         <span class="fn-sig">char* fs_readamount(const char* filename, int start, int end) <span class="tag tag-malloc">MALLOC</span></span>
-        <p>Reads a range of bytes.</p>
-        <div class="example">char* chunk = fs_readamount("data.bin", 10, 50);<br>free(chunk);</div>
+        <p>Reads a specific byte range. Ideal for binary data and large files.</p>
+        <div class="example">char* data = fs_readamount("/dev/urandom", 0, 80000);</div>
+    </div>
+
+    <div class="fn-card">
+        <span class="fn-sig">int fs_write(const char* filename, const char* data)</span>
+        <p>Overwrites file with string data. Returns 1 on success.</p>
+    </div>
+
+    <div class="fn-card">
+        <span class="fn-sig">int fs_append(const char* filename, const char* data)</span>
+        <p>Appends string to end of file.</p>
+    </div>
+
+    <div class="fn-card">
+        <span class="fn-sig">int fs_exists(const char* filename)</span>
+        <p>Checks if file exists.</p>
     </div>
 </section>
 
 <section id="http">
-    <h2>4. SimpleHTTP API</h2>
-    
-    <div class="fn-card">
-        <span class="fn-sig">char* http_request(const char* url) <span class="tag tag-malloc">MALLOC</span> <span class="tag tag-macro">CURL</span></span>
-        <p>Performs a synchronous GET request.</p>
-        <div class="example">char* html = http_request("https://google.com");<br>free(html);</div>
-    </div>
+    <h2>3. SimpleHTTP (Web & API)</h2>
 
     <div class="fn-card">
-        <span class="fn-sig">void http_host_ssl(int port, const char* cert, const char* key) <span class="tag tag-macro">SSL</span></span>
-        <p>Starts HTTPS server with SSL Termination.</p>
-        <div class="example">http_host_ssl(443, "fullchain.pem", "privkey.pem");</div>
+        <span class="fn-sig">char* http_request(const char* url) <span class="tag tag-malloc">MALLOC</span> <span class="tag tag-macro">CURL</span></span>
+        <p>Universal GET request. Handles HTTPS and redirects.</p>
+        <div class="example">char* body = http_request("https://api.github.com/zen");</div>
     </div>
 
     <div class="fn-card">
         <span class="fn-sig">void http_host(int port)</span>
-        <p>Starts standard HTTP server.</p>
-        <div class="example">http_host(80);</div>
+        <p>Starts a non-blocking web server.</p>
+    </div>
+
+    <div class="fn-card">
+        <span class="fn-sig">void http_host_ssl(int port, const char* cert, const char* key) <span class="tag tag-macro">SSL</span></span>
+        <p>Starts an HTTPS server using provided certificate files.</p>
     </div>
 
     <div class="fn-card">
         <span class="fn-sig">int http_reqready()</span>
-        <p>Polls for a new connection.</p>
-        <div class="example">if(http_reqready()) { http_reply("OK"); }</div>
+        <p>Returns 1 if a request is waiting. Sets internal request state.</p>
     </div>
 
     <div class="fn-card">
-        <span class="fn-sig">void http_reply(const char* html)</span>
-        <p>Sends HTML response to the current client.</p>
-        <div class="example">http_reply("&lt;h1&gt;Hello&lt;/h1&gt;");</div>
-    </div>
-
-    <div class="fn-card">
-        <span class="fn-sig">int http_is(const char* path)</span>
-        <p>Checks if current request matches path.</p>
-        <div class="example">if(http_is("/api/status")) { ... }</div>
+        <span class="fn-sig">void http_reply(const char* content)</span>
+        <p>Sends a 200 OK response with the provided body.</p>
     </div>
 
     <div class="fn-card">
         <span class="fn-sig">char* http_param(const char* key) <span class="tag tag-malloc">MALLOC</span></span>
-        <p>Extracts GET/URL parameters.</p>
-        <div class="example">char* val = http_param("user"); // returns "admin" for ?user=admin</div>
+        <p>Extracts GET parameters from the URL (e.g. ?id=123).</p>
     </div>
 </section>
 
+
+
 <section id="net">
-    <h2>5. SimpleNet API</h2>
-    
+    <h2>4. SimpleNet (Sockets)</h2>
+    <p>Uses a simplified ID system (Slots 0-9) to manage connections.</p>
+
     <div class="fn-card">
         <span class="fn-sig">int opentcp(char* ip, int port, int id)</span>
-        <p>Opens TCP listener (Server).</p>
-        <div class="example">opentcp(NULL, 9000, 0);</div>
+        <p>Starts a TCP listener on the specified slot.</p>
     </div>
 
     <div class="fn-card">
         <span class="fn-sig">int connecttcp(int id, char* host, int port)</span>
-        <p>Connects to remote TCP host (Client).</p>
-        <div class="example">connecttcp(1, "127.0.0.1", 9000);</div>
-    </div>
-
-    <div class="fn-card">
-        <span class="fn-sig">int openudp(char* ip, int port, int id)</span>
-        <p>Opens UDP socket.</p>
-        <div class="example">openudp(NULL, 8888, 2);</div>
+        <p>Connects a slot as a TCP client to a remote server.</p>
     </div>
 
     <div class="fn-card">
         <span class="fn-sig">char* receivefrom(int id)</span>
-        <p>Non-blocking receive string. Returns NULL if no data.</p>
-        <div class="example">char* msg = receivefrom(0);</div>
+        <p>Non-blocking receive. Returns NULL if no data.</p>
     </div>
 
     <div class="fn-card">
         <span class="fn-sig">int senddata(int id, char* host, int port, char* data)</span>
-        <p>Sends string data through specified socket ID.</p>
-        <div class="example">senddata(1, "1.1.1.1", 53, "DNS Query");</div>
+        <p>Sends a string through the slot. Host/Port ignored for established TCP.</p>
     </div>
 </section>
 
 <section id="tools">
-    <h2>6. SimpleTools API</h2>
+    <h2>5. SimpleTools (The Power Tools)</h2>
 
     <div class="fn-card">
-        <span class="fn-sig">char* str_replace_all(const char* s, const char* f, const char* r) <span class="tag tag-malloc">MALLOC</span></span>
-        <p>Global search and replace.</p>
-        <div class="example">char* s = str_replace_all("hi hi", "hi", "bye");</div>
-    </div>
-
-    <div class="fn-card">
-        <span class="fn-sig">char* str_format(const char* fmt, ...) <span class="tag tag-malloc">MALLOC</span></span>
-        <p>Heap-allocated sprintf.</p>
-        <div class="example">char* s = str_format("ID: %d", 5);</div>
+        <span class="fn-sig">void hexdmp(void* ptr, int len)</span>
+        <p>The hexdump tool. Dumps a raw memory buffer as formatted hex, bypassing null-terminator limits.</p>
+        <div class="example">
+char* pluh = fs_readamount("/dev/urandom", 0, 80000);
+hexdmp(pluh, 256); // See the stuffs!
+        </div>
     </div>
 
     <div class="fn-card">
         <span class="fn-sig">char* json_obj(const char* fmt, ...) <span class="tag tag-malloc">MALLOC</span></span>
-        <p>Quick JSON generator. Use <code>s:</code> for string, <code>i:</code> for int, <code>f:</code> for float, <code>b:</code> for bool.</p>
-        <div class="example">char* j = json_obj("s:name, i:val", "cpu", 88);</div>
+        <p>Builds a JSON string. Uses <code>s:</code>(string), <code>i:</code>(int), <code>f:</code>(float), <code>b:</code>(bool).</p>
+        <div class="example">char* j = json_obj("s:user, i:hp", "Player1", 100);</div>
+    </div>
+
+    <div class="fn-card">
+        <span class="fn-sig">char* str_format(const char* fmt, ...) <span class="tag tag-malloc">MALLOC</span></span>
+        <p>A heap-allocated wrapper for sprintf.</p>
     </div>
 
     <div class="fn-card">
         <span class="fn-sig">char* time_now()</span>
-        <p>Returns "YYYY-MM-DD HH:MM:SS".</p>
-        <div class="example">printf("%s", time_now());</div>
-    </div>
-
-    <div class="fn-card">
-        <span class="fn-sig">long time_unix()</span>
-        <p>Returns current Unix epoch.</p>
+        <p>Returns static string "YYYY-MM-DD HH:MM:SS".</p>
     </div>
 </section>
 
+
+
 <footer>
-    <p>&copy; 2026 QOL.h Project. Documentation rendered with Water.css.</p>
+    <p>&copy; 2026 t0x1ch3m1cals. Documentation rendered with Water.css.</p>
 </footer>
 
 </body>

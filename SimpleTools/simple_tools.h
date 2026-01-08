@@ -24,6 +24,18 @@
 
 /* --- Internal String Engine --- */
 
+static inline void hexdmp(void* ptr, int buflen) {
+    unsigned char* buf = (unsigned char*)ptr;
+    for (int i = 0; i < buflen; i++) {
+        // Print the hex value of the byte
+        printf("%02x ", buf[i]);
+
+        // Every 16 bytes, start a new line for readability
+        if ((i + 1) % 16 == 0) printf("\n");
+    }
+    printf("\n");
+}
+
 static inline char* _str_replace_logic(const char* src, const char* find, const char* replace, int start_idx, int end_idx) {
     if (!src || !find || !replace) return NULL;
     size_t find_len = strlen(find);
