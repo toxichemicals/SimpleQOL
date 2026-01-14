@@ -132,4 +132,4 @@ BEGIN { in_block = 0; }
 echo "" >> "$FINAL_FILE"
 echo "#endif /* ${GUARD} */" >> "$FINAL_FILE"
 
-echo "Successfully amalgamated into ${FINAL_FILE} with global buffer safety."
+echo "Successfully generated: ${FINAL_FILE}."
