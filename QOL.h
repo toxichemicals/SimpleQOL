@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <stdint.h>
 /* --- Platform Paths --- */
 #ifdef _WIN32
     #define PATH_SEP '\\'
@@ -32,6 +32,24 @@ static inline void _fs_normalize(char* path) {
 }
 
 /* --- Core Functions --- */
+
+static inline int char_to_int(const void *ptr, int len) {
+    uint32_t hash = 2166136261u;
+    const unsigned char *p = (const unsigned char *)ptr;
+
+    for (int i = 0; i < len; i++) {
+        hash ^= p[i];
+        hash *= 16777619u;
+    }
+
+    return (int)hash;
+}
+
+static inline float char_to_float(const void *ptr, int len) {
+    unsigned int seed = (unsigned int)char_to_int(ptr, len);
+    // 0xFFFFFFFF is the max value of uint32_t
+    return (float)seed / (float)0xFFFFFFFF;
+}
 
 static inline long fs_size(const char* filename) {
     char clean_path[256]; strncpy(clean_path, filename, 255); _fs_normalize(clean_path);
@@ -138,6 +156,7 @@ static inline char* fs_readamount(const char* filename, int startbyte, int endby
 }
 
 #endif
+
 
 /* Source: SimpleHTTP/simple_http.h */
 #ifndef SIMPLE_HTTP_H
