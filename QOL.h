@@ -12,34 +12,21 @@
 #define SimpleConflictsFixer
 
 #ifdef _WIN32
-// 1. Fix the Version Redefinition Warning
 #ifdef _WIN32_WINNT
 #undef _WIN32_WINNT
 #endif
 #define _WIN32_WINNT 0x0600
-
-// 2. The Renaming Hack
-// We tell the compiler: "When you see CloseWindow in the NEXT file,
-// pretend it's named WinCloseWindow"
 #define CloseWindow WinCloseWindow
 #define ShowCursor WinShowCursor
 #define Rectangle WinRectangle
 #define DrawText WinDrawText
-
-// 3. Include Windows headers (Winsock2 MUST come before Windows.h)
 #include <winsock2.h>
 #include <windows.h>
 #include <objbase.h>
-
-// 4. Clean up
-// Now we stop the renaming so that when YOUR code says 'CloseWindow',
-// it correctly points back to Raylib's version.
 #undef CloseWindow
 #undef ShowCursor
 #undef Rectangle
 #undef DrawText
-
-// Fix the 'interface' macro that breaks socket functions
 #ifdef interface
 #undef interface
 #endif
@@ -628,6 +615,95 @@ static inline Packet receivefrompro(int id) {
 static inline ClientInfo getclientinfo(int id) {
     if (id < 0 || id > 9) { ClientInfo e = {"", 0}; return e; }
     return _last_client[id];
+}
+
+#endif
+
+
+/* Source: SimpleParse/simple_parse.h */
+#ifndef SIMPLE_PARSE_H
+
+#include <stdio.h>
+#include <string.h>
+#include <stdarg.h>
+
+typedef struct {
+    int byte;          
+    int line;          
+    char fullstr[256]; 
+    char str[256];     
+    char con[256];     
+} Parsed;
+
+/* Internal: Only uses standard string.h to keep it modular */
+static inline int _sp_count_lines(const char* start, const char* end) {
+    int lines = 1;
+    for (const char* p = start; p < end; p++) {
+        if (*p == '\n') lines++;
+    }
+    return lines;
+}
+
+static inline int parse(const char* haystack, const char* needle) {
+    return (haystack && needle && strstr(haystack, needle) != NULL);
+}
+
+static inline Parsed advparse(const char* haystack, const char* needle) {
+    Parsed p = { -1, -1, {0}, {0}, {0} };
+    if (!haystack || !needle) return p;
+
+    const char* pos = strstr(haystack, needle);
+    if (pos) {
+        p.byte = (int)(pos - haystack);
+        p.line = _sp_count_lines(haystack, pos);
+        strncpy(p.fullstr, needle, 255);
+    }
+    return p;
+}
+
+static inline int parseex(const char* input, const char* format, ...) {
+    if (!input || !format) return 0;
+    va_list args;
+    va_start(args, format);
+    int items = vsscanf(input, format, args);
+    va_end(args);
+    return items;
+}
+
+static inline Parsed parsecon(const char* haystack, const char* pattern) {
+    Parsed p = { -1, -1, {0}, {0}, {0} };
+    char fmt[256]; 
+    strncpy(fmt, pattern, 255);
+    char* split = strstr(fmt, "%%");
+    if (!split) return p;
+
+    *split = '\0';
+    char* prefix = fmt;       
+    char* suffix = split + 2; 
+
+    const char* start_ptr = strstr(haystack, prefix);
+    if (!start_ptr) return p;
+
+    const char* val_start = start_ptr + strlen(prefix);
+    const char* end_ptr = strstr(val_start, suffix);
+    if (!end_ptr) return p;
+
+    p.byte = (int)(start_ptr - haystack);
+    p.line = _sp_count_lines(haystack, start_ptr);
+
+    int full_len = (int)((end_ptr + strlen(suffix)) - start_ptr);
+    if (full_len > 255) full_len = 255;
+    strncpy(p.fullstr, start_ptr, full_len);
+    p.fullstr[full_len] = '\0';
+
+    snprintf(p.str, 255, "%s%s", prefix, suffix);
+
+    int con_len = (int)(end_ptr - val_start);
+    if (con_len > 255) con_len = 255;
+    strncpy(p.con, val_start, con_len);
+    p.con[con_len] = '\0';
+
+    return p;
 }
 
 #endif
