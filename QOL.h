@@ -4,8 +4,7 @@
 /* --- QOL Global Configuration --- */
 #ifndef MAX_HTTP_BUF
 #define MAX_HTTP_BUF 65536
-#endif
-
+#endif\n
 
 /* Source: SimpleConflictsFixer/simple_conflicts_fixer.h */
 #ifndef SimpleConflictsFixer

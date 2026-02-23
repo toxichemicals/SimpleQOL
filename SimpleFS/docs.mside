@@ -1,0 +1,48 @@
+# SimpleFS Documentation
+## Platform-Independent File System Module
+
+@@@ Feature Overview @@@
+
+`SimpleFS` provides a high-level API for file manipulation, path normalization, and data extraction. 
+[cite_start]It abstracts away the differences between Windows and POSIX path separators to ensure code portability[cite: 3, 9].
+
+[cite_start]-> Platform Paths: Automatically detects $ _WIN32 $ to set $ PATH_SEP $ ('\') and $ ALT_SEP $ ('/')[cite: 3, 9].
+[cite_start]--> Normalizer: The internal $ _fs_normalize $ function automatically converts slashes to the system default[cite: 3, 9].
+
+| Conversion & Hashing Logic
+|
+| -- > $ char_to_int(ptr, len) $
+|    | [cite_start]-- > Generates a 32-bit FNV-1a hash from a byte buffer[cite: 3, 9].
+|
+| -- > $ char_to_float(ptr, len) $
+|    | [cite_start]-- > Converts a hashed buffer into a float between 0.0 and 1.0[cite: 3, 9].
+
+## Core File Operations
+[cite_start]% Efficiency: All path-based functions use a 256-byte internal buffer for normalization[cite: 3, 9]. %
+
+| Function | Description
+|
+| -- > $ fs_size(filename) $ | [cite_start]Returns file size in bytes, or -1 if the file is missing[cite: 3, 9].
+| -- > $ fs_read(filename) $ | [cite_start]Reads an entire file into a $ malloc'd $ buffer[cite: 3, 9].
+| -- > $ fs_write(filename, data) $ | [cite_start]Overwrites a file with the provided string[cite: 3, 9].
+| -- > $ fs_append(filename, data) $ | [cite_start]Appends string data to the end of a file[cite: 3, 9].
+| -- > $ fs_delete(filename) $ | [cite_start]Removes a file from the system[cite: 3, 9].
+| -- > $ fs_exists(filename) $ | [cite_start]Returns 1 if the file can be opened for reading[cite: 3, 9].
+
+## Advanced Extraction
+[cite_start]&& Note: String-based extraction assumes the data is null-terminated[cite: 3, 9]. &&
+
+* [cite_start]**fs_count** : Counts occurrences of a specific character in a string buffer[cite: 3, 9].
+* [cite_start]**fs_getline** : Retrieves a specific line number from a string (Uses a 512-byte static buffer)[cite: 3, 9].
+* [cite_start]**fs_readto** : Reads a file from the start up to a specific byte offset[cite: 3, 9].
+* [cite_start]**fs_readamount** : Reads a specific chunk of a file defined by start and end bytes[cite: 3, 9].
+
+||
+// Reading a specific line from a file
+char* content = fs_read("logs.txt");
+char* line2 = fs_getline(content, 2); 
+// Remember to free(content)!
+||
+
+$$ High Priority $$
+\\ Functions like $ fs_read $, $ fs_readto $, and $ fs_readamount $ allocate memory dynamically. [cite_start]You MUST call $ free() $ on the returned pointer to avoid memory leaks[cite: 3, 9]. \\

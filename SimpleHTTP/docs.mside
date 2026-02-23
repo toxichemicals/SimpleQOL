@@ -1,0 +1,54 @@
+# SimpleHTTP Documentation
+## Modular Web Server and Client Module
+
+@@@ Feature Overview @@@
+
+`SimpleHTTP` provides a straightforward API for hosting local web servers or making external client requests.
+It supports both standard TCP and SSL/HTTPS connections through modular definitions.
+
+-> Cross-Platform: Includes socket shims for Windows ($ winsock2 $) and POSIX ($ sys/socket $).
+--> Buffer Control: Uses $ MAX_HTTP_BUF $ (default 65536) for all incoming/outgoing data.
+
+| Module Requirements
+|
+| -- > $ HTTP_SSL $ : Define to enable HTTPS hosting and SSL termination.
+| -- > $ HTTP_CURL $ : Define to enable the $ http_request $ client function.
+
+## Server API
+% Lifecycle: Host -> Listen (ReqReady) -> Reply %
+
+| Function | Description
+|
+| -- > $ http_host(port) $ | Starts a standard HTTP server on the specified port.
+| -- > $ http_host_ssl(port, cert, key) $ | Starts an HTTPS server using PEM certificate and key files.
+| -- > $ http_reqready() $ | Non-blocking check for new connections; returns 1 if a request is active.
+|    | -- > Automatically parses $ method $ and $ path $.
+| -- > $ http_reply(html) $ | Sends an HTTP 200 OK response with the provided HTML string.
+
+## Request Handling
+&& State Logic: Access request data through the internal $_http_req$ state. &&
+
+* **http_is(path)** : Returns true if the current active request matches the specified path.
+* **http_param(key)** : Extracts a URL parameter value (e.g., from "?id=123") into a static buffer.
+
+||
+// Simple Server Example
+http_host(8080);
+while(1) {
+    if (http_reqready()) {
+        if (http_is("/index")) http_reply("<h1>Welcome</h1>");
+        else http_reply("404 Not Found");
+    }
+}
+||
+
+## Client API
+\\ Note: Requires $ HTTP_CURL $ to be defined in your project. \\
+
+* **http_request(url)** : Performs a GET request to the target URL and returns the response body.
+
+$$ High Priority $$
+\\ The $ http_reply $ function automatically handles closing the client socket and resetting the request state. \\
+
+$$$ Critical Warning $$$
+&& $ http_param $ and $ http_request $ use static or internal buffers. Copy the data if you need to preserve it across multiple calls. &&

@@ -1,0 +1,51 @@
+# SimpleParse Documentation
+## String Extraction and Signature Parsing Module
+
+@@@ Feature Overview @@@
+
+`SimpleParse` is a specialized module for extracting data between markers and identifying function-like signatures within string buffers. It is designed for lightweight scripting or configuration parsing where a full regex engine is overkill.
+
+-> Context Aware: Returns a $ Parsed $ struct containing global offsets, line numbers, and column positions.
+--> Structural Parsing: Automatically separates a match into its "Full String", "Signature", and "Inner Content".
+
+| The Parsed Struct
+|
+| -- > $ int byte $ : Global byte offset in the file.
+| -- > $ int lbyte $ : Column offset relative to the start of the line.
+| -- > $ int line $ : Current line number.
+| -- > $ char fullstr[256] $ : The entire match (e.g., "spawn_player(hero);").
+| -- > $ char str[256] $ : The signature (e.g., "spawn_player()").
+| -- > $ char con[256] $ : The inner content (e.g., "hero").
+
+## Core Extraction API
+% Memory: These functions operate on existing string buffers and do not perform internal heap allocations. %
+
+| Function | Description
+|
+| -- > $ parsecon(haystack, prefix, suffix) $ | Finds the first occurrence of data between a prefix and suffix.
+| -- > $ parseconadv(haystack, prefix, suffix, skip) $ | Same as above, but skips a specified number of matches.
+| -- > $ parseline(haystack, line, dest, max) $ | Extracts a specific line of text into a destination buffer.
+| -- > $ parselineadv(haystack, line) $ | Returns a $ Parsed $ struct for an entire specific line.
+
+## Logic & Navigation
+&& Search: `advparse` is the primary engine for iterating through multiple signatures in one buffer. &&
+
+* **advparse(haystack, skip)** : Scans for the $ Nth $ occurrence of a "prefix(content)suffix" pattern.
+* **_sp_get_line_ptr** : Internal helper to jump directly to a specific line number in a buffer.
+
+||
+// Advanced Parsing Example
+const char* code = "print('hello'); print('world');";
+Parsed p = advparse(code, 1); 
+
+// Result for skip 1:
+// p.fullstr -> "print('world');"
+// p.con     -> "'world'"
+// p.line    -> 1
+||
+
+$$ High Priority $$
+\\ All string fields in the $ Parsed $ struct have a fixed limit of 256 characters. \\
+
+$$$ Critical Warning $$$
+&& Ensure the $ haystack $ buffer is null-terminated before passing it to any $ SimpleParse $ function to avoid memory overruns. &&

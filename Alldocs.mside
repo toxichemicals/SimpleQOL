@@ -1,0 +1,339 @@
+
+@@@ Module: SimpleConflictsFixer @@@
+
+# SimpleConflictsFixer Documentation
+## Windows Header Namespace Sanitizer
+
+@@@ Feature Overview @@@
+
+The `SimpleConflictsFixer` is a specialized header designed to prevent naming collisions between the Windows API and modern C/C++ libraries or custom user code.
+It specifically targets common function names that `windows.h` defines as macros, which often "pollute" the global namespace.
+
+[cite_start]-> Platform Specific: This module only executes logic if $_WIN32$ is defined[cite: 1].
+[cite_start]--> Target Version: Forces $_WIN32_WINNT$ to $0x0600$ (Windows Vista or higher)[cite: 1].
+
+| Collision Management
+|
+| -- > Temporary Macro Redefinition
+|    | [cite_start]-- > $CloseWindow$ -> $WinCloseWindow$ [cite: 1]
+|    | [cite_start]-- > $ShowCursor$ -> $WinShowCursor$ [cite: 1]
+|    | [cite_start]-- > $Rectangle$ -> $WinRectangle$ [cite: 1]
+|    | [cite_start]-- > $DrawText$ -> $WinDrawText$ [cite: 1]
+|
+| -- > Post-Include Cleanup
+|    | [cite_start]-- > All temporary $Win$ macros are $#undef$ after headers are loaded[cite: 1].
+|    | [cite_start]-- > Explicitly $#undef interface$ to prevent COM conflicts[cite: 1].
+
+## Protected Headers
+The following system headers are wrapped by this fixer to ensure they do not break external logic:
+
+1.  [cite_start]$winsock2.h$ [cite: 1]
+2.  [cite_start]$windows.h$ [cite: 1]
+3.  [cite_start]$objbase.h$ [cite: 1]
+
+$$ High Priority $$
+\\ This header should be included BEFORE other QOL modules that utilize networking or graphics to ensure symbols like "Rectangle" remain available for custom use. \\
+
+
+---
+
+@@@ Module: SimpleFS @@@
+
+# SimpleFS Documentation
+## Platform-Independent File System Module
+
+@@@ Feature Overview @@@
+
+`SimpleFS` provides a high-level API for file manipulation, path normalization, and data extraction. 
+[cite_start]It abstracts away the differences between Windows and POSIX path separators to ensure code portability[cite: 3, 9].
+
+[cite_start]-> Platform Paths: Automatically detects $ _WIN32 $ to set $ PATH_SEP $ ('\') and $ ALT_SEP $ ('/')[cite: 3, 9].
+[cite_start]--> Normalizer: The internal $ _fs_normalize $ function automatically converts slashes to the system default[cite: 3, 9].
+
+| Conversion & Hashing Logic
+|
+| -- > $ char_to_int(ptr, len) $
+|    | [cite_start]-- > Generates a 32-bit FNV-1a hash from a byte buffer[cite: 3, 9].
+|
+| -- > $ char_to_float(ptr, len) $
+|    | [cite_start]-- > Converts a hashed buffer into a float between 0.0 and 1.0[cite: 3, 9].
+
+## Core File Operations
+[cite_start]% Efficiency: All path-based functions use a 256-byte internal buffer for normalization[cite: 3, 9]. %
+
+| Function | Description
+|
+| -- > $ fs_size(filename) $ | [cite_start]Returns file size in bytes, or -1 if the file is missing[cite: 3, 9].
+| -- > $ fs_read(filename) $ | [cite_start]Reads an entire file into a $ malloc'd $ buffer[cite: 3, 9].
+| -- > $ fs_write(filename, data) $ | [cite_start]Overwrites a file with the provided string[cite: 3, 9].
+| -- > $ fs_append(filename, data) $ | [cite_start]Appends string data to the end of a file[cite: 3, 9].
+| -- > $ fs_delete(filename) $ | [cite_start]Removes a file from the system[cite: 3, 9].
+| -- > $ fs_exists(filename) $ | [cite_start]Returns 1 if the file can be opened for reading[cite: 3, 9].
+
+## Advanced Extraction
+[cite_start]&& Note: String-based extraction assumes the data is null-terminated[cite: 3, 9]. &&
+
+* [cite_start]**fs_count** : Counts occurrences of a specific character in a string buffer[cite: 3, 9].
+* [cite_start]**fs_getline** : Retrieves a specific line number from a string (Uses a 512-byte static buffer)[cite: 3, 9].
+* [cite_start]**fs_readto** : Reads a file from the start up to a specific byte offset[cite: 3, 9].
+* [cite_start]**fs_readamount** : Reads a specific chunk of a file defined by start and end bytes[cite: 3, 9].
+
+||
+// Reading a specific line from a file
+char* content = fs_read("logs.txt");
+char* line2 = fs_getline(content, 2); 
+// Remember to free(content)!
+||
+
+$$ High Priority $$
+\\ Functions like $ fs_read $, $ fs_readto $, and $ fs_readamount $ allocate memory dynamically. [cite_start]You MUST call $ free() $ on the returned pointer to avoid memory leaks[cite: 3, 9]. \\
+
+
+---
+
+@@@ Module: SimpleHTTP @@@
+
+# SimpleHTTP Documentation
+## Modular Web Server and Client Module
+
+@@@ Feature Overview @@@
+
+`SimpleHTTP` provides a straightforward API for hosting local web servers or making external client requests.
+It supports both standard TCP and SSL/HTTPS connections through modular definitions.
+
+-> Cross-Platform: Includes socket shims for Windows ($ winsock2 $) and POSIX ($ sys/socket $).
+--> Buffer Control: Uses $ MAX_HTTP_BUF $ (default 65536) for all incoming/outgoing data.
+
+| Module Requirements
+|
+| -- > $ HTTP_SSL $ : Define to enable HTTPS hosting and SSL termination.
+| -- > $ HTTP_CURL $ : Define to enable the $ http_request $ client function.
+
+## Server API
+% Lifecycle: Host -> Listen (ReqReady) -> Reply %
+
+| Function | Description
+|
+| -- > $ http_host(port) $ | Starts a standard HTTP server on the specified port.
+| -- > $ http_host_ssl(port, cert, key) $ | Starts an HTTPS server using PEM certificate and key files.
+| -- > $ http_reqready() $ | Non-blocking check for new connections; returns 1 if a request is active.
+|    | -- > Automatically parses $ method $ and $ path $.
+| -- > $ http_reply(html) $ | Sends an HTTP 200 OK response with the provided HTML string.
+
+## Request Handling
+&& State Logic: Access request data through the internal $_http_req$ state. &&
+
+* **http_is(path)** : Returns true if the current active request matches the specified path.
+* **http_param(key)** : Extracts a URL parameter value (e.g., from "?id=123") into a static buffer.
+
+||
+// Simple Server Example
+http_host(8080);
+while(1) {
+    if (http_reqready()) {
+        if (http_is("/index")) http_reply("<h1>Welcome</h1>");
+        else http_reply("404 Not Found");
+    }
+}
+||
+
+## Client API
+\\ Note: Requires $ HTTP_CURL $ to be defined in your project. \\
+
+* **http_request(url)** : Performs a GET request to the target URL and returns the response body.
+
+$$ High Priority $$
+\\ The $ http_reply $ function automatically handles closing the client socket and resetting the request state. \\
+
+$$$ Critical Warning $$$
+&& $ http_param $ and $ http_request $ use static or internal buffers. Copy the data if you need to preserve it across multiple calls. &&
+
+
+---
+
+@@@ Module: SimpleNet @@@
+
+# SimpleNet Documentation
+## Modular Low-Level Networking (TCP/UDP)
+
+@@@ Feature Overview @@@
+
+[cite_start]`SimpleNet` is a lightweight, cross-platform socket wrapper designed for raw data transmission using both TCP and UDP protocols[cite: 5]. 
+[cite_start]It manages an internal state of up to 10 concurrent connections and provides an abstracted interface for both Windows (Winsock2) and POSIX systems[cite: 5].
+
+[cite_start]-> Protocol Support: Supports both $ UDP (0) $ and $ TCP (1) $ modes[cite: 5].
+[cite_start]--> Cross-Platform: Handles $ net_close $ and $ net_errno $ shims automatically across platforms[cite: 5].
+
+| Internal State Management
+|
+| -- > $ _net_fds[10] $ | [cite_start]Array of active socket descriptors[cite: 5].
+| -- > $ _net_active[10] $ | [cite_start]Boolean flags tracking which connection IDs are in use[cite: 5].
+| -- > $ _net_static_buf $ | [cite_start]Shared 65,536-byte buffer for incoming data[cite: 5].
+
+## Connection API
+% Logic: Use unique IDs (0-9) to manage multiple concurrent sockets %
+
+| Function | Description
+|
+| -- > $ net_host(id, port, proto) $ | [cite_start]Sets up a listener (TCP) or binds a socket (UDP) on the given port[cite: 5].
+| -- > $ net_connect(id, host, port, proto) $ | [cite_start]Connects to a remote host[cite: 5].
+|    | [cite_start]-- > TCP: Establishes a handshake[cite: 5].
+|    | [cite_start]-- > UDP: Prepares the socket for address-based sends[cite: 5].
+| -- > $ net_close(id) $ | [cite_start]Terminates the connection and clears the internal state[cite: 5].
+
+## Data Transmission
+[cite_start]&& Non-Blocking: `net_read` uses non-blocking flags where available (e.g., $ MSG_DONTWAIT $)[cite: 5]. &&
+
+* **net_read(id)** : Checks for incoming data. [cite_start]If data exists, returns a pointer to $ _net_static_buf $[cite: 5].
+* [cite_start]**net_send(id, data)** : Sends a string to the connected remote peer[cite: 5].
+* [cite_start]**net_send_to(id, host, port, data)** : Sends a UDP packet to a specific destination without a persistent connection[cite: 5].
+
+## Metadata & Tracking
+[cite_start]\\ Access the last client information through the _last_client[id] structure \\ [cite: 5]
+
+* [cite_start]**net_get_ip(id)** : Returns the IP address of the last sender/client as a string[cite: 5].
+* [cite_start]**net_get_port(id)** : Returns the port of the last sender/client as an integer[cite: 5].
+
+||
+// Simple UDP Echo Example
+net_host(0, 5000, UDP);
+while(1) {
+    char* msg = net_read(0);
+    if (msg) {
+        printf("Received: %s from %s\n", msg, net_get_ip(0));
+        net_send_to(0, net_get_ip(0), net_get_port(0), "ACK");
+    }
+}
+||
+
+$$ High Priority $$
+\\ Ensure that you call $ net_host $ or $ net_connect $ before attempting to read/write to a specific ID index! [cite_start]\\ [cite: 5]
+
+$$$ Critical Warning $$$
+&& The internal buffer $ _net_static_buf $ is shared across all IDs. If you need to preserve data between consecutive $ net_read $ calls across different IDs, you must copy the data to your own buffer. [cite_start]&& [cite: 5]
+
+
+---
+
+@@@ Module: SimpleParse @@@
+
+# SimpleParse Documentation
+## String Extraction and Signature Parsing Module
+
+@@@ Feature Overview @@@
+
+`SimpleParse` is a specialized module for extracting data between markers and identifying function-like signatures within string buffers. It is designed for lightweight scripting or configuration parsing where a full regex engine is overkill.
+
+-> Context Aware: Returns a $ Parsed $ struct containing global offsets, line numbers, and column positions.
+--> Structural Parsing: Automatically separates a match into its "Full String", "Signature", and "Inner Content".
+
+| The Parsed Struct
+|
+| -- > $ int byte $ : Global byte offset in the file.
+| -- > $ int lbyte $ : Column offset relative to the start of the line.
+| -- > $ int line $ : Current line number.
+| -- > $ char fullstr[256] $ : The entire match (e.g., "spawn_player(hero);").
+| -- > $ char str[256] $ : The signature (e.g., "spawn_player()").
+| -- > $ char con[256] $ : The inner content (e.g., "hero").
+
+## Core Extraction API
+% Memory: These functions operate on existing string buffers and do not perform internal heap allocations. %
+
+| Function | Description
+|
+| -- > $ parsecon(haystack, prefix, suffix) $ | Finds the first occurrence of data between a prefix and suffix.
+| -- > $ parseconadv(haystack, prefix, suffix, skip) $ | Same as above, but skips a specified number of matches.
+| -- > $ parseline(haystack, line, dest, max) $ | Extracts a specific line of text into a destination buffer.
+| -- > $ parselineadv(haystack, line) $ | Returns a $ Parsed $ struct for an entire specific line.
+
+## Logic & Navigation
+&& Search: `advparse` is the primary engine for iterating through multiple signatures in one buffer. &&
+
+* **advparse(haystack, skip)** : Scans for the $ Nth $ occurrence of a "prefix(content)suffix" pattern.
+* **_sp_get_line_ptr** : Internal helper to jump directly to a specific line number in a buffer.
+
+||
+// Advanced Parsing Example
+const char* code = "print('hello'); print('world');";
+Parsed p = advparse(code, 1); 
+
+// Result for skip 1:
+// p.fullstr -> "print('world');"
+// p.con     -> "'world'"
+// p.line    -> 1
+||
+
+$$ High Priority $$
+\\ All string fields in the $ Parsed $ struct have a fixed limit of 256 characters. \\
+
+$$$ Critical Warning $$$
+&& Ensure the $ haystack $ buffer is null-terminated before passing it to any $ SimpleParse $ function to avoid memory overruns. &&
+
+
+---
+
+@@@ Module: SimpleTools @@@
+
+# SimpleTools Documentation
+## Utility, String, and Time Module
+
+@@@ Feature Overview @@@
+
+`SimpleTools` provides cross-platform utility functions for string manipulation, memory inspection, and time tracking.
+[cite_start]It operates independently and includes built-in shims for platform-specific timing. [cite: 1]
+
+[cite_start]-> Cross-Platform: Automatically handles $ usleep $ and $ sleep $ for Windows and POSIX. [cite: 1]
+[cite_start]--> Core Buffer: Default $ MAX_HTTP_BUF $ set to 65536. [cite: 1]
+
+| Internal Logic
+|
+| -- > $ hexdmp(void* ptr, int buflen) $
+|    | [cite_start]-- > Prints raw memory in hex format (16 bytes per line). [cite: 1]
+|
+| -- > $ _str_replace_logic $
+|    | [cite_start]-- > The engine behind all string replacement APIs. [cite: 1]
+
+## String Replacement API
+% Dynamic Memory: These functions return a $ malloc'd $ string. Always $ free() $ after use! [cite_start]% [cite: 1]
+
+| Function | Description
+|
+| -- > $ str_replace_first $ | [cite_start]Replaces only the first match found. [cite: 1]
+| -- > $ str_replace_all $   | [cite_start]Replaces every occurrence of the target string. [cite: 1]
+| -- > $ str_replace_nth $   | [cite_start]Replaces a specific occurrence by index. [cite: 1]
+| -- > $ str_replace_count $ | [cite_start]Replaces matches up to a specific count. [cite: 1]
+| -- > $ str_replace_range $ | [cite_start]Replaces matches between a start and end index. [cite: 1]
+
+## String Search & Validation
+&& Failsafe: Returns 0 (False) if input pointers are NULL. [cite_start]&& [cite: 1]
+
+* [cite_start]**str_starts** : Check if string begins with a prefix. [cite: 1]
+* [cite_start]**str_ends** : Check if string ends with a suffix. [cite: 1]
+* [cite_start]**str_contains** : Standard substring search. [cite: 1]
+* [cite_start]**str_is_numeric** : Validates if string consists only of digits. [cite: 1]
+
+## Formatting & Time
+\\ Note: str_format uses a static allocation of MAX_HTTP_BUF. [cite_start]\\ [cite: 1]
+
+||
+// Formatting Examples
+[cite_start]char* s = str_format("User ID: %d", 101); [cite: 1]
+str_upper(s); [cite_start]// "USER ID: 101" [cite: 1]
+str_trim(s);  [cite_start]// Removes whitespace [cite: 1]
+||
+
+^ **Time Tools** ^
+* [cite_start]$ time_now() $ : Returns current date/time as "YYYY-MM-DD HH:MM:SS". [cite: 1]
+* [cite_start]$ time_unix() $ : Returns raw unix timestamp as a $ long $. [cite: 1]
+
+$$$ JSON Builder $$$
+&& use $ json_obj $ to build JSON strings with type-prefixing (s:string, i:int, f:float, b:bool). [cite_start]&& [cite: 1]
+
+||
+// JSON Example
+[cite_start]char* j = json_obj("s:name, i:age, b:active", "Ted", 21, 1); [cite: 1]
+// Returns: {"name":"Ted", "age":21, "active":true}
+||
+
+
+---

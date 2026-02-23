@@ -1,0 +1,32 @@
+# Mark-Sideways Reference (mside.docs)
+
+@@@ Feature Overview @@@
+This is the header style for major sections.
+
+# Big Title
+## Sub Title
+### Minor Detail
+
+-> This is a quick pointer or "Take Note"
+--> This is a deep-dive arrow for sub-points
+
+|
+| -- > This is a tree-format bullet point.
+| -- > Used for nested logic.
+
+|| 
+   // This is a code block defined by double pipes
+   int x = 10;
+||
+
+**Important Text**
+\\ Underline-style emphasis \\
+// Italic-style emphasis //
+
+&& Highlighted logic or status &&
+^ Superscript/Top-level note ^
+% Inline calculation or stat %
+
+$ Metadata or Variable $
+$$ High Priority $$
+$$$ Critical / System Level $$$
