@@ -6,27 +6,27 @@
 The `SimpleConflictsFixer` is a specialized header designed to prevent naming collisions between the Windows API and modern C/C++ libraries or custom user code.
 It specifically targets common function names that `windows.h` defines as macros, which often "pollute" the global namespace.
 
-[cite_start]-> Platform Specific: This module only executes logic if $_WIN32$ is defined[cite: 1].
-[cite_start]--> Target Version: Forces $_WIN32_WINNT$ to $0x0600$ (Windows Vista or higher)[cite: 1].
+-> Platform Specific: This module only executes logic if $_WIN32$ is defined[cite: 1].
+--> Target Version: Forces $_WIN32_WINNT$ to $0x0600$ (Windows Vista or higher)[cite: 1].
 
 | Collision Management
 |
 | -- > Temporary Macro Redefinition
-|    | [cite_start]-- > $CloseWindow$ -> $WinCloseWindow$ [cite: 1]
-|    | [cite_start]-- > $ShowCursor$ -> $WinShowCursor$ [cite: 1]
-|    | [cite_start]-- > $Rectangle$ -> $WinRectangle$ [cite: 1]
-|    | [cite_start]-- > $DrawText$ -> $WinDrawText$ [cite: 1]
+|    | -- > $CloseWindow$ -> $WinCloseWindow$ [cite: 1]
+|    | -- > $ShowCursor$ -> $WinShowCursor$ [cite: 1]
+|    | -- > $Rectangle$ -> $WinRectangle$ [cite: 1]
+|    | -- > $DrawText$ -> $WinDrawText$ [cite: 1]
 |
 | -- > Post-Include Cleanup
-|    | [cite_start]-- > All temporary $Win$ macros are $#undef$ after headers are loaded[cite: 1].
-|    | [cite_start]-- > Explicitly $#undef interface$ to prevent COM conflicts[cite: 1].
+|    | -- > All temporary $Win$ macros are $#undef$ after headers are loaded[cite: 1].
+|    | -- > Explicitly $#undef interface$ to prevent COM conflicts[cite: 1].
 
 ## Protected Headers
 The following system headers are wrapped by this fixer to ensure they do not break external logic:
 
-1.  [cite_start]$winsock2.h$ [cite: 1]
-2.  [cite_start]$windows.h$ [cite: 1]
-3.  [cite_start]$objbase.h$ [cite: 1]
+1.  $winsock2.h$ [cite: 1]
+2.  $windows.h$ [cite: 1]
+3.  $objbase.h$ [cite: 1]
 
 $$ High Priority $$
 \\ This header should be included BEFORE other QOL modules that utilize networking or graphics to ensure symbols like "Rectangle" remain available for custom use. \\

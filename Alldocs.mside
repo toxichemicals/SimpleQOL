@@ -1,4 +1,95 @@
 
+@@@ Module: Simple_BUDP @@@
+
+# Module: simple_budp.h
+## Secure UDP Communication Library
+
+@@@ Feature Overview @@@
+The `simple_budp` library provides a high-level API for encrypted, identity-verified UDP networking. 
+It handles the $ BudpSession $ lifecycle, including automated handshakes and identity pinning.
+
+-> This documentation covers only the public API functions intended for end-user implementation.
+
+@@@ Core Lifecycle Functions @@@
+
+| Function Definitions
+|
+| -- > void binit(const char* identity_seed)
+|    | -- > Initializes the library and derives the local private identity from the $ seed $.
+|    |
+| -- > int bopen(int id, int port)
+|    | -- > Opens a socket for a specific session ID.
+|    | -- > Use $ port $ 0 for a random client port, or a specific number for a server.
+|    |
+| -- > void bconnect(int id, char* host, int port)
+|    | -- > Initiates a connection sequence to a remote $ host $ and $ port $.
+|    |
+| -- > char* bupdate(int id)
+|    | -- > The heart of the library; must be called frequently in the main loop.
+|    | -- > Returns && "CONNECTED" && on successful handshake.
+|    | -- > Returns && "DEAD" && on heartbeat timeout.
+|    | -- > Returns $ char* $ payload when data is received.
+|    |
+| -- > void bsend(int id, char* data)
+|    | -- > Sends a string $ data $ to the connected peer using the current security mode.
+|    |
+| -- > void bclose(int id)
+|    | -- > Closes the network socket and wipes the session state.
+
+## Security & Mode Configuration
+% Note: Encryption status is negotiated during the handshake flow %
+
+| Manual Overrides
+|
+| -- > void UseE(int id)
+|    | -- > Requests the use of encryption for the session.
+|    |
+| -- > void NoE(int id)
+|    | -- > Disables encryption for the session (Plaintext mode).
+|    |
+| -- > void bforceE(int id)
+|    | -- > Strict Mode: Kills the connection if the peer does not support encryption.
+|    |
+| -- > void bforceNoE(int id)
+|    | -- > Strict Mode: Kills the connection if the peer tries to use encryption.
+|    |
+| -- > void enableheartbeat(int id)
+|    | -- > Activates the 10-second timeout logic to detect dropped peers.
+
+## Identity Management
+$$ High Priority $$
+\\ Identity Pinning is handled automatically by the library based on the IP address.
+\\
+
+| Identity Functions
+|
+| -- > uint64_t bget_my_public_id(int id)
+|    | -- > Returns the DH public key derived from your $ identity_seed $.
+|    |
+| -- > void breset(int id)
+|    | -- > Clears current session logic without closing the underlying socket.
+
+## Implementation Example
+||
+// Standard Setup
+   binit("USER_SECRET_KEY");
+   bopen(0, 8080);
+   enableheartbeat(0);
+   
+   while(running) {
+       char* msg = bupdate(0);
+       if(msg) printf("Recv: %s\n", msg);
+       b_sleep(1);
+   }
+||
+
+$$$ Warning!! $$$
+&& Handshake fails immediately if a pinned identity in ~/.local/BUDP/ mismatches the remote peer &&
+^ This prevents Man-In-The-Middle (MITM) attacks.
+
+
+---
+
 @@@ Module: SimpleConflictsFixer @@@
 
 # SimpleConflictsFixer Documentation
@@ -9,27 +100,27 @@
 The `SimpleConflictsFixer` is a specialized header designed to prevent naming collisions between the Windows API and modern C/C++ libraries or custom user code.
 It specifically targets common function names that `windows.h` defines as macros, which often "pollute" the global namespace.
 
-[cite_start]-> Platform Specific: This module only executes logic if $_WIN32$ is defined[cite: 1].
-[cite_start]--> Target Version: Forces $_WIN32_WINNT$ to $0x0600$ (Windows Vista or higher)[cite: 1].
+-> Platform Specific: This module only executes logic if $_WIN32$ is defined[cite: 1].
+--> Target Version: Forces $_WIN32_WINNT$ to $0x0600$ (Windows Vista or higher)[cite: 1].
 
 | Collision Management
 |
 | -- > Temporary Macro Redefinition
-|    | [cite_start]-- > $CloseWindow$ -> $WinCloseWindow$ [cite: 1]
-|    | [cite_start]-- > $ShowCursor$ -> $WinShowCursor$ [cite: 1]
-|    | [cite_start]-- > $Rectangle$ -> $WinRectangle$ [cite: 1]
-|    | [cite_start]-- > $DrawText$ -> $WinDrawText$ [cite: 1]
+|    | -- > $CloseWindow$ -> $WinCloseWindow$ [cite: 1]
+|    | -- > $ShowCursor$ -> $WinShowCursor$ [cite: 1]
+|    | -- > $Rectangle$ -> $WinRectangle$ [cite: 1]
+|    | -- > $DrawText$ -> $WinDrawText$ [cite: 1]
 |
 | -- > Post-Include Cleanup
-|    | [cite_start]-- > All temporary $Win$ macros are $#undef$ after headers are loaded[cite: 1].
-|    | [cite_start]-- > Explicitly $#undef interface$ to prevent COM conflicts[cite: 1].
+|    | -- > All temporary $Win$ macros are $#undef$ after headers are loaded[cite: 1].
+|    | -- > Explicitly $#undef interface$ to prevent COM conflicts[cite: 1].
 
 ## Protected Headers
 The following system headers are wrapped by this fixer to ensure they do not break external logic:
 
-1.  [cite_start]$winsock2.h$ [cite: 1]
-2.  [cite_start]$windows.h$ [cite: 1]
-3.  [cite_start]$objbase.h$ [cite: 1]
+1.  $winsock2.h$ [cite: 1]
+2.  $windows.h$ [cite: 1]
+3.  $objbase.h$ [cite: 1]
 
 $$ High Priority $$
 \\ This header should be included BEFORE other QOL modules that utilize networking or graphics to ensure symbols like "Rectangle" remain available for custom use. \\
@@ -45,38 +136,38 @@ $$ High Priority $$
 @@@ Feature Overview @@@
 
 `SimpleFS` provides a high-level API for file manipulation, path normalization, and data extraction. 
-[cite_start]It abstracts away the differences between Windows and POSIX path separators to ensure code portability[cite: 3, 9].
+It abstracts away the differences between Windows and POSIX path separators to ensure code portability[cite: 3, 9].
 
-[cite_start]-> Platform Paths: Automatically detects $ _WIN32 $ to set $ PATH_SEP $ ('\') and $ ALT_SEP $ ('/')[cite: 3, 9].
-[cite_start]--> Normalizer: The internal $ _fs_normalize $ function automatically converts slashes to the system default[cite: 3, 9].
+-> Platform Paths: Automatically detects $ _WIN32 $ to set $ PATH_SEP $ ('\') and $ ALT_SEP $ ('/')[cite: 3, 9].
+--> Normalizer: The internal $ _fs_normalize $ function automatically converts slashes to the system default[cite: 3, 9].
 
 | Conversion & Hashing Logic
 |
 | -- > $ char_to_int(ptr, len) $
-|    | [cite_start]-- > Generates a 32-bit FNV-1a hash from a byte buffer[cite: 3, 9].
+|    | -- > Generates a 32-bit FNV-1a hash from a byte buffer[cite: 3, 9].
 |
 | -- > $ char_to_float(ptr, len) $
-|    | [cite_start]-- > Converts a hashed buffer into a float between 0.0 and 1.0[cite: 3, 9].
+|    | -- > Converts a hashed buffer into a float between 0.0 and 1.0[cite: 3, 9].
 
 ## Core File Operations
-[cite_start]% Efficiency: All path-based functions use a 256-byte internal buffer for normalization[cite: 3, 9]. %
+% Efficiency: All path-based functions use a 256-byte internal buffer for normalization[cite: 3, 9]. %
 
 | Function | Description
 |
-| -- > $ fs_size(filename) $ | [cite_start]Returns file size in bytes, or -1 if the file is missing[cite: 3, 9].
-| -- > $ fs_read(filename) $ | [cite_start]Reads an entire file into a $ malloc'd $ buffer[cite: 3, 9].
-| -- > $ fs_write(filename, data) $ | [cite_start]Overwrites a file with the provided string[cite: 3, 9].
-| -- > $ fs_append(filename, data) $ | [cite_start]Appends string data to the end of a file[cite: 3, 9].
-| -- > $ fs_delete(filename) $ | [cite_start]Removes a file from the system[cite: 3, 9].
-| -- > $ fs_exists(filename) $ | [cite_start]Returns 1 if the file can be opened for reading[cite: 3, 9].
+| -- > $ fs_size(filename) $ | Returns file size in bytes, or -1 if the file is missing[cite: 3, 9].
+| -- > $ fs_read(filename) $ | Reads an entire file into a $ malloc'd $ buffer[cite: 3, 9].
+| -- > $ fs_write(filename, data) $ | Overwrites a file with the provided string[cite: 3, 9].
+| -- > $ fs_append(filename, data) $ | Appends string data to the end of a file[cite: 3, 9].
+| -- > $ fs_delete(filename) $ | Removes a file from the system[cite: 3, 9].
+| -- > $ fs_exists(filename) $ | Returns 1 if the file can be opened for reading[cite: 3, 9].
 
 ## Advanced Extraction
-[cite_start]&& Note: String-based extraction assumes the data is null-terminated[cite: 3, 9]. &&
+&& Note: String-based extraction assumes the data is null-terminated[cite: 3, 9]. &&
 
-* [cite_start]**fs_count** : Counts occurrences of a specific character in a string buffer[cite: 3, 9].
-* [cite_start]**fs_getline** : Retrieves a specific line number from a string (Uses a 512-byte static buffer)[cite: 3, 9].
-* [cite_start]**fs_readto** : Reads a file from the start up to a specific byte offset[cite: 3, 9].
-* [cite_start]**fs_readamount** : Reads a specific chunk of a file defined by start and end bytes[cite: 3, 9].
+* **fs_count** : Counts occurrences of a specific character in a string buffer[cite: 3, 9].
+* **fs_getline** : Retrieves a specific line number from a string (Uses a 512-byte static buffer)[cite: 3, 9].
+* **fs_readto** : Reads a file from the start up to a specific byte offset[cite: 3, 9].
+* **fs_readamount** : Reads a specific chunk of a file defined by start and end bytes[cite: 3, 9].
 
 ||
 // Reading a specific line from a file
@@ -86,7 +177,7 @@ char* line2 = fs_getline(content, 2);
 ||
 
 $$ High Priority $$
-\\ Functions like $ fs_read $, $ fs_readto $, and $ fs_readamount $ allocate memory dynamically. [cite_start]You MUST call $ free() $ on the returned pointer to avoid memory leaks[cite: 3, 9]. \\
+\\ Functions like $ fs_read $, $ fs_readto $, and $ fs_readamount $ allocate memory dynamically. You MUST call $ free() $ on the returned pointer to avoid memory leaks[cite: 3, 9]. \\
 
 
 ---
@@ -158,41 +249,41 @@ $$$ Critical Warning $$$
 
 @@@ Feature Overview @@@
 
-[cite_start]`SimpleNet` is a lightweight, cross-platform socket wrapper designed for raw data transmission using both TCP and UDP protocols[cite: 5]. 
-[cite_start]It manages an internal state of up to 10 concurrent connections and provides an abstracted interface for both Windows (Winsock2) and POSIX systems[cite: 5].
+`SimpleNet` is a lightweight, cross-platform socket wrapper designed for raw data transmission using both TCP and UDP protocols[cite: 5].
+It manages an internal state of up to 10 concurrent connections and provides an abstracted interface for both Windows (Winsock2) and POSIX systems[cite: 5].
 
-[cite_start]-> Protocol Support: Supports both $ UDP (0) $ and $ TCP (1) $ modes[cite: 5].
-[cite_start]--> Cross-Platform: Handles $ net_close $ and $ net_errno $ shims automatically across platforms[cite: 5].
+-> Protocol Support: Supports both $ UDP (0) $ and $ TCP (1) $ modes[cite: 5].
+--> Cross-Platform: Handles $ net_close $ and $ net_errno $ shims automatically across platforms[cite: 5].
 
 | Internal State Management
 |
-| -- > $ _net_fds[10] $ | [cite_start]Array of active socket descriptors[cite: 5].
-| -- > $ _net_active[10] $ | [cite_start]Boolean flags tracking which connection IDs are in use[cite: 5].
-| -- > $ _net_static_buf $ | [cite_start]Shared 65,536-byte buffer for incoming data[cite: 5].
+| -- > $ _net_fds[10] $ | Array of active socket descriptors[cite: 5].
+| -- > $ _net_active[10] $ | Boolean flags tracking which connection IDs are in use[cite: 5].
+| -- > $ _net_static_buf $ | Shared 65,536-byte buffer for incoming data[cite: 5].
 
 ## Connection API
 % Logic: Use unique IDs (0-9) to manage multiple concurrent sockets %
 
 | Function | Description
 |
-| -- > $ net_host(id, port, proto) $ | [cite_start]Sets up a listener (TCP) or binds a socket (UDP) on the given port[cite: 5].
-| -- > $ net_connect(id, host, port, proto) $ | [cite_start]Connects to a remote host[cite: 5].
-|    | [cite_start]-- > TCP: Establishes a handshake[cite: 5].
-|    | [cite_start]-- > UDP: Prepares the socket for address-based sends[cite: 5].
-| -- > $ net_close(id) $ | [cite_start]Terminates the connection and clears the internal state[cite: 5].
+| -- > $ net_host(id, port, proto) $ | Sets up a listener (TCP) or binds a socket (UDP) on the given port[cite: 5].
+| -- > $ net_connect(id, host, port, proto) $ | Connects to a remote host[cite: 5].
+|    | -- > TCP: Establishes a handshake[cite: 5].
+|    | -- > UDP: Prepares the socket for address-based sends[cite: 5].
+| -- > $ net_close(id) $ | Terminates the connection and clears the internal state[cite: 5].
 
 ## Data Transmission
-[cite_start]&& Non-Blocking: `net_read` uses non-blocking flags where available (e.g., $ MSG_DONTWAIT $)[cite: 5]. &&
+&& Non-Blocking: `net_read` uses non-blocking flags where available (e.g., $ MSG_DONTWAIT $)[cite: 5]. &&
 
-* **net_read(id)** : Checks for incoming data. [cite_start]If data exists, returns a pointer to $ _net_static_buf $[cite: 5].
-* [cite_start]**net_send(id, data)** : Sends a string to the connected remote peer[cite: 5].
-* [cite_start]**net_send_to(id, host, port, data)** : Sends a UDP packet to a specific destination without a persistent connection[cite: 5].
+* **net_read(id)** : Checks for incoming data. If data exists, returns a pointer to $ _net_static_buf $[cite: 5].
+* **net_send(id, data)** : Sends a string to the connected remote peer[cite: 5].
+* **net_send_to(id, host, port, data)** : Sends a UDP packet to a specific destination without a persistent connection[cite: 5].
 
 ## Metadata & Tracking
-[cite_start]\\ Access the last client information through the _last_client[id] structure \\ [cite: 5]
+\\ Access the last client information through the _last_client[id] structure \\ [cite: 5]
 
-* [cite_start]**net_get_ip(id)** : Returns the IP address of the last sender/client as a string[cite: 5].
-* [cite_start]**net_get_port(id)** : Returns the port of the last sender/client as an integer[cite: 5].
+* **net_get_ip(id)** : Returns the IP address of the last sender/client as a string[cite: 5].
+* **net_get_port(id)** : Returns the port of the last sender/client as an integer[cite: 5].
 
 ||
 // Simple UDP Echo Example
@@ -207,10 +298,10 @@ while(1) {
 ||
 
 $$ High Priority $$
-\\ Ensure that you call $ net_host $ or $ net_connect $ before attempting to read/write to a specific ID index! [cite_start]\\ [cite: 5]
+\\ Ensure that you call $ net_host $ or $ net_connect $ before attempting to read/write to a specific ID index! \\ [cite: 5]
 
 $$$ Critical Warning $$$
-&& The internal buffer $ _net_static_buf $ is shared across all IDs. If you need to preserve data between consecutive $ net_read $ calls across different IDs, you must copy the data to your own buffer. [cite_start]&& [cite: 5]
+&& The internal buffer $ _net_static_buf $ is shared across all IDs. If you need to preserve data between consecutive $ net_read $ calls across different IDs, you must copy the data to your own buffer. && [cite: 5]
 
 
 ---
@@ -280,58 +371,58 @@ $$$ Critical Warning $$$
 @@@ Feature Overview @@@
 
 `SimpleTools` provides cross-platform utility functions for string manipulation, memory inspection, and time tracking.
-[cite_start]It operates independently and includes built-in shims for platform-specific timing. [cite: 1]
+It operates independently and includes built-in shims for platform-specific timing. [cite: 1]
 
-[cite_start]-> Cross-Platform: Automatically handles $ usleep $ and $ sleep $ for Windows and POSIX. [cite: 1]
-[cite_start]--> Core Buffer: Default $ MAX_HTTP_BUF $ set to 65536. [cite: 1]
+-> Cross-Platform: Automatically handles $ usleep $ and $ sleep $ for Windows and POSIX. [cite: 1]
+--> Core Buffer: Default $ MAX_HTTP_BUF $ set to 65536. [cite: 1]
 
 | Internal Logic
 |
 | -- > $ hexdmp(void* ptr, int buflen) $
-|    | [cite_start]-- > Prints raw memory in hex format (16 bytes per line). [cite: 1]
+|    | -- > Prints raw memory in hex format (16 bytes per line). [cite: 1]
 |
 | -- > $ _str_replace_logic $
-|    | [cite_start]-- > The engine behind all string replacement APIs. [cite: 1]
+|    | -- > The engine behind all string replacement APIs. [cite: 1]
 
 ## String Replacement API
-% Dynamic Memory: These functions return a $ malloc'd $ string. Always $ free() $ after use! [cite_start]% [cite: 1]
+% Dynamic Memory: These functions return a $ malloc'd $ string. Always $ free() $ after use! % [cite: 1]
 
 | Function | Description
 |
-| -- > $ str_replace_first $ | [cite_start]Replaces only the first match found. [cite: 1]
-| -- > $ str_replace_all $   | [cite_start]Replaces every occurrence of the target string. [cite: 1]
-| -- > $ str_replace_nth $   | [cite_start]Replaces a specific occurrence by index. [cite: 1]
-| -- > $ str_replace_count $ | [cite_start]Replaces matches up to a specific count. [cite: 1]
-| -- > $ str_replace_range $ | [cite_start]Replaces matches between a start and end index. [cite: 1]
+| -- > $ str_replace_first $ | Replaces only the first match found. [cite: 1]
+| -- > $ str_replace_all $   | Replaces every occurrence of the target string. [cite: 1]
+| -- > $ str_replace_nth $   | Replaces a specific occurrence by index. [cite: 1]
+| -- > $ str_replace_count $ | Replaces matches up to a specific count. [cite: 1]
+| -- > $ str_replace_range $ | Replaces matches between a start and end index. [cite: 1]
 
 ## String Search & Validation
-&& Failsafe: Returns 0 (False) if input pointers are NULL. [cite_start]&& [cite: 1]
+&& Failsafe: Returns 0 (False) if input pointers are NULL. && [cite: 1]
 
-* [cite_start]**str_starts** : Check if string begins with a prefix. [cite: 1]
-* [cite_start]**str_ends** : Check if string ends with a suffix. [cite: 1]
-* [cite_start]**str_contains** : Standard substring search. [cite: 1]
-* [cite_start]**str_is_numeric** : Validates if string consists only of digits. [cite: 1]
+* **str_starts** : Check if string begins with a prefix. [cite: 1]
+* **str_ends** : Check if string ends with a suffix. [cite: 1]
+* **str_contains** : Standard substring search. [cite: 1]
+* **str_is_numeric** : Validates if string consists only of digits. [cite: 1]
 
 ## Formatting & Time
-\\ Note: str_format uses a static allocation of MAX_HTTP_BUF. [cite_start]\\ [cite: 1]
+\\ Note: str_format uses a static allocation of MAX_HTTP_BUF. \\ [cite: 1]
 
 ||
 // Formatting Examples
-[cite_start]char* s = str_format("User ID: %d", 101); [cite: 1]
-str_upper(s); [cite_start]// "USER ID: 101" [cite: 1]
-str_trim(s);  [cite_start]// Removes whitespace [cite: 1]
+char* s = str_format("User ID: %d", 101); [cite: 1]
+str_upper(s); // "USER ID: 101" [cite: 1]
+str_trim(s);  // Removes whitespace [cite: 1]
 ||
 
 ^ **Time Tools** ^
-* [cite_start]$ time_now() $ : Returns current date/time as "YYYY-MM-DD HH:MM:SS". [cite: 1]
-* [cite_start]$ time_unix() $ : Returns raw unix timestamp as a $ long $. [cite: 1]
+* $ time_now() $ : Returns current date/time as "YYYY-MM-DD HH:MM:SS". [cite: 1]
+* $ time_unix() $ : Returns raw unix timestamp as a $ long $. [cite: 1]
 
 $$$ JSON Builder $$$
-&& use $ json_obj $ to build JSON strings with type-prefixing (s:string, i:int, f:float, b:bool). [cite_start]&& [cite: 1]
+&& use $ json_obj $ to build JSON strings with type-prefixing (s:string, i:int, f:float, b:bool). && [cite: 1]
 
 ||
 // JSON Example
-[cite_start]char* j = json_obj("s:name, i:age, b:active", "Ted", 21, 1); [cite: 1]
+char* j = json_obj("s:name, i:age, b:active", "Ted", 21, 1); [cite: 1]
 // Returns: {"name":"Ted", "age":21, "active":true}
 ||
 

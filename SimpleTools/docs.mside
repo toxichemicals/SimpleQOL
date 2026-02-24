@@ -4,57 +4,57 @@
 @@@ Feature Overview @@@
 
 `SimpleTools` provides cross-platform utility functions for string manipulation, memory inspection, and time tracking.
-[cite_start]It operates independently and includes built-in shims for platform-specific timing. [cite: 1]
+It operates independently and includes built-in shims for platform-specific timing. [cite: 1]
 
-[cite_start]-> Cross-Platform: Automatically handles $ usleep $ and $ sleep $ for Windows and POSIX. [cite: 1]
-[cite_start]--> Core Buffer: Default $ MAX_HTTP_BUF $ set to 65536. [cite: 1]
+-> Cross-Platform: Automatically handles $ usleep $ and $ sleep $ for Windows and POSIX. [cite: 1]
+--> Core Buffer: Default $ MAX_HTTP_BUF $ set to 65536. [cite: 1]
 
 | Internal Logic
 |
 | -- > $ hexdmp(void* ptr, int buflen) $
-|    | [cite_start]-- > Prints raw memory in hex format (16 bytes per line). [cite: 1]
+|    | -- > Prints raw memory in hex format (16 bytes per line). [cite: 1]
 |
 | -- > $ _str_replace_logic $
-|    | [cite_start]-- > The engine behind all string replacement APIs. [cite: 1]
+|    | -- > The engine behind all string replacement APIs. [cite: 1]
 
 ## String Replacement API
-% Dynamic Memory: These functions return a $ malloc'd $ string. Always $ free() $ after use! [cite_start]% [cite: 1]
+% Dynamic Memory: These functions return a $ malloc'd $ string. Always $ free() $ after use! % [cite: 1]
 
 | Function | Description
 |
-| -- > $ str_replace_first $ | [cite_start]Replaces only the first match found. [cite: 1]
-| -- > $ str_replace_all $   | [cite_start]Replaces every occurrence of the target string. [cite: 1]
-| -- > $ str_replace_nth $   | [cite_start]Replaces a specific occurrence by index. [cite: 1]
-| -- > $ str_replace_count $ | [cite_start]Replaces matches up to a specific count. [cite: 1]
-| -- > $ str_replace_range $ | [cite_start]Replaces matches between a start and end index. [cite: 1]
+| -- > $ str_replace_first $ | Replaces only the first match found. [cite: 1]
+| -- > $ str_replace_all $   | Replaces every occurrence of the target string. [cite: 1]
+| -- > $ str_replace_nth $   | Replaces a specific occurrence by index. [cite: 1]
+| -- > $ str_replace_count $ | Replaces matches up to a specific count. [cite: 1]
+| -- > $ str_replace_range $ | Replaces matches between a start and end index. [cite: 1]
 
 ## String Search & Validation
-&& Failsafe: Returns 0 (False) if input pointers are NULL. [cite_start]&& [cite: 1]
+&& Failsafe: Returns 0 (False) if input pointers are NULL. && [cite: 1]
 
-* [cite_start]**str_starts** : Check if string begins with a prefix. [cite: 1]
-* [cite_start]**str_ends** : Check if string ends with a suffix. [cite: 1]
-* [cite_start]**str_contains** : Standard substring search. [cite: 1]
-* [cite_start]**str_is_numeric** : Validates if string consists only of digits. [cite: 1]
+* **str_starts** : Check if string begins with a prefix. [cite: 1]
+* **str_ends** : Check if string ends with a suffix. [cite: 1]
+* **str_contains** : Standard substring search. [cite: 1]
+* **str_is_numeric** : Validates if string consists only of digits. [cite: 1]
 
 ## Formatting & Time
-\\ Note: str_format uses a static allocation of MAX_HTTP_BUF. [cite_start]\\ [cite: 1]
+\\ Note: str_format uses a static allocation of MAX_HTTP_BUF. \\ [cite: 1]
 
 ||
 // Formatting Examples
-[cite_start]char* s = str_format("User ID: %d", 101); [cite: 1]
-str_upper(s); [cite_start]// "USER ID: 101" [cite: 1]
-str_trim(s);  [cite_start]// Removes whitespace [cite: 1]
+char* s = str_format("User ID: %d", 101); [cite: 1]
+str_upper(s); // "USER ID: 101" [cite: 1]
+str_trim(s);  // Removes whitespace [cite: 1]
 ||
 
 ^ **Time Tools** ^
-* [cite_start]$ time_now() $ : Returns current date/time as "YYYY-MM-DD HH:MM:SS". [cite: 1]
-* [cite_start]$ time_unix() $ : Returns raw unix timestamp as a $ long $. [cite: 1]
+* $ time_now() $ : Returns current date/time as "YYYY-MM-DD HH:MM:SS". [cite: 1]
+* $ time_unix() $ : Returns raw unix timestamp as a $ long $. [cite: 1]
 
 $$$ JSON Builder $$$
-&& use $ json_obj $ to build JSON strings with type-prefixing (s:string, i:int, f:float, b:bool). [cite_start]&& [cite: 1]
+&& use $ json_obj $ to build JSON strings with type-prefixing (s:string, i:int, f:float, b:bool). && [cite: 1]
 
 ||
 // JSON Example
-[cite_start]char* j = json_obj("s:name, i:age, b:active", "Ted", 21, 1); [cite: 1]
+char* j = json_obj("s:name, i:age, b:active", "Ted", 21, 1); [cite: 1]
 // Returns: {"name":"Ted", "age":21, "active":true}
 ||

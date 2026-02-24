@@ -23,7 +23,22 @@
     typedef int http_fd;
     #define INVALID_SOCKET -1
 #endif
-
+#if defined(_WIN32) && defined(HTTP_SSL)
+/* * FIX: MSYS2/UCRT Linker Compatibility 
+ * Provides the vsnprintf symbol expected by some OpenSSL static builds
+ * when using vanilla MinGW cross-compilers.
+ */
+#include <stdarg.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+int __cdecl __imp__vsnprintf(char *buffer, size_t count, const char *format, va_list argptr) {
+    return vsnprintf(buffer, count, format, argptr);
+}
+#ifdef __cplusplus
+}
+#endif
+#endif
 /* --- Modular SSL (Server Termination) --- */
 #ifdef HTTP_SSL
     #include <openssl/ssl.h>

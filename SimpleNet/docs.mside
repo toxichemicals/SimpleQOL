@@ -3,41 +3,41 @@
 
 @@@ Feature Overview @@@
 
-[cite_start]`SimpleNet` is a lightweight, cross-platform socket wrapper designed for raw data transmission using both TCP and UDP protocols[cite: 5]. 
-[cite_start]It manages an internal state of up to 10 concurrent connections and provides an abstracted interface for both Windows (Winsock2) and POSIX systems[cite: 5].
+`SimpleNet` is a lightweight, cross-platform socket wrapper designed for raw data transmission using both TCP and UDP protocols[cite: 5].
+It manages an internal state of up to 10 concurrent connections and provides an abstracted interface for both Windows (Winsock2) and POSIX systems[cite: 5].
 
-[cite_start]-> Protocol Support: Supports both $ UDP (0) $ and $ TCP (1) $ modes[cite: 5].
-[cite_start]--> Cross-Platform: Handles $ net_close $ and $ net_errno $ shims automatically across platforms[cite: 5].
+-> Protocol Support: Supports both $ UDP (0) $ and $ TCP (1) $ modes[cite: 5].
+--> Cross-Platform: Handles $ net_close $ and $ net_errno $ shims automatically across platforms[cite: 5].
 
 | Internal State Management
 |
-| -- > $ _net_fds[10] $ | [cite_start]Array of active socket descriptors[cite: 5].
-| -- > $ _net_active[10] $ | [cite_start]Boolean flags tracking which connection IDs are in use[cite: 5].
-| -- > $ _net_static_buf $ | [cite_start]Shared 65,536-byte buffer for incoming data[cite: 5].
+| -- > $ _net_fds[10] $ | Array of active socket descriptors[cite: 5].
+| -- > $ _net_active[10] $ | Boolean flags tracking which connection IDs are in use[cite: 5].
+| -- > $ _net_static_buf $ | Shared 65,536-byte buffer for incoming data[cite: 5].
 
 ## Connection API
 % Logic: Use unique IDs (0-9) to manage multiple concurrent sockets %
 
 | Function | Description
 |
-| -- > $ net_host(id, port, proto) $ | [cite_start]Sets up a listener (TCP) or binds a socket (UDP) on the given port[cite: 5].
-| -- > $ net_connect(id, host, port, proto) $ | [cite_start]Connects to a remote host[cite: 5].
-|    | [cite_start]-- > TCP: Establishes a handshake[cite: 5].
-|    | [cite_start]-- > UDP: Prepares the socket for address-based sends[cite: 5].
-| -- > $ net_close(id) $ | [cite_start]Terminates the connection and clears the internal state[cite: 5].
+| -- > $ net_host(id, port, proto) $ | Sets up a listener (TCP) or binds a socket (UDP) on the given port[cite: 5].
+| -- > $ net_connect(id, host, port, proto) $ | Connects to a remote host[cite: 5].
+|    | -- > TCP: Establishes a handshake[cite: 5].
+|    | -- > UDP: Prepares the socket for address-based sends[cite: 5].
+| -- > $ net_close(id) $ | Terminates the connection and clears the internal state[cite: 5].
 
 ## Data Transmission
-[cite_start]&& Non-Blocking: `net_read` uses non-blocking flags where available (e.g., $ MSG_DONTWAIT $)[cite: 5]. &&
+&& Non-Blocking: `net_read` uses non-blocking flags where available (e.g., $ MSG_DONTWAIT $)[cite: 5]. &&
 
-* **net_read(id)** : Checks for incoming data. [cite_start]If data exists, returns a pointer to $ _net_static_buf $[cite: 5].
-* [cite_start]**net_send(id, data)** : Sends a string to the connected remote peer[cite: 5].
-* [cite_start]**net_send_to(id, host, port, data)** : Sends a UDP packet to a specific destination without a persistent connection[cite: 5].
+* **net_read(id)** : Checks for incoming data. If data exists, returns a pointer to $ _net_static_buf $[cite: 5].
+* **net_send(id, data)** : Sends a string to the connected remote peer[cite: 5].
+* **net_send_to(id, host, port, data)** : Sends a UDP packet to a specific destination without a persistent connection[cite: 5].
 
 ## Metadata & Tracking
-[cite_start]\\ Access the last client information through the _last_client[id] structure \\ [cite: 5]
+\\ Access the last client information through the _last_client[id] structure \\ [cite: 5]
 
-* [cite_start]**net_get_ip(id)** : Returns the IP address of the last sender/client as a string[cite: 5].
-* [cite_start]**net_get_port(id)** : Returns the port of the last sender/client as an integer[cite: 5].
+* **net_get_ip(id)** : Returns the IP address of the last sender/client as a string[cite: 5].
+* **net_get_port(id)** : Returns the port of the last sender/client as an integer[cite: 5].
 
 ||
 // Simple UDP Echo Example
@@ -52,7 +52,7 @@ while(1) {
 ||
 
 $$ High Priority $$
-\\ Ensure that you call $ net_host $ or $ net_connect $ before attempting to read/write to a specific ID index! [cite_start]\\ [cite: 5]
+\\ Ensure that you call $ net_host $ or $ net_connect $ before attempting to read/write to a specific ID index! \\ [cite: 5]
 
 $$$ Critical Warning $$$
-&& The internal buffer $ _net_static_buf $ is shared across all IDs. If you need to preserve data between consecutive $ net_read $ calls across different IDs, you must copy the data to your own buffer. [cite_start]&& [cite: 5]
+&& The internal buffer $ _net_static_buf $ is shared across all IDs. If you need to preserve data between consecutive $ net_read $ calls across different IDs, you must copy the data to your own buffer. && [cite: 5]

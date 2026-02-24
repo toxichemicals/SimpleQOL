@@ -26,72 +26,108 @@ echo "Rendering Mark-Sideways (.mside)..."
     echo "<script>$(cat "$TAILWIND_FILE")</script>"
     echo "<style>
         @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #0f172a; }
-        .mside-tree { font-family: 'Fira Code', monospace; line-height: 1.4; }
-        .mside-code { font-family: 'Fira Code', monospace; background: rgba(0,0,0,0.4); }
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #cbd5e1; }
+        .mside-tree { font-family: 'Fira Code', monospace; line-height: 1.5; color: #94a3b8; }
+        .mside-code { font-family: 'Fira Code', monospace; background: #1e293b; border-left: 4px solid #38bdf8; }
+        pre { margin: 0; white-space: pre; }
+        .cite-tag { font-size: 0.7rem; color: #6366f1; vertical-align: super; margin-left: 2px; }
     </style>"
-    echo "</head><body class='text-slate-300 p-8'>"
-    echo "<div class='max-w-4xl mx-auto'>"
-    echo "<header class='mb-12 border-b border-slate-700 pb-6'>"
-    echo "<h1 class='text-4xl font-bold text-white tracking-tight'>$TITLE</h1>"
-    echo "<p class='text-slate-500 mt-2 font-mono text-sm'>System Documentation // Generated $(date +%Y-%m-%d)</p>"
+    echo "</head><body class='antialiased'>"
+    echo "<div class='max-w-4xl mx-auto px-8 py-16'>"
+    echo "<header class='mb-20 border-b border-slate-800 pb-10 text-center'>"
+    echo "<h1 class='text-5xl font-extrabold text-white tracking-tighter mb-4'>$TITLE</h1>"
+    echo "<p class='text-slate-500 font-mono text-xs uppercase tracking-[0.3em]'>System Documentation // $(date +%Y-%m-%d)</p>"
     echo "</header>"
 
-    # Process line by line
-    # We use sed for the complex regex substitutions first
-    sed -E "
-        s/@@@ (.*) @@@/<div class='bg-emerald-500\/10 border border-emerald-500\/20 text-emerald-400 px-4 py-2 rounded-md font-bold my-8 uppercase tracking-widest text-sm inline-block'>\1<\/div>/g;
-        s/^# (.*)/<h1 class='text-3xl font-bold text-white mt-12 mb-4'>\1<\/h1>/g;
-        s/^## (.*)/<h2 class='text-2xl font-semibold text-sky-400 mt-8 mb-3'>\1<\/h2>/g;
-        s/^### (.*)/<h3 class='text-xl font-medium text-slate-200 mt-6 mb-2'>\1<\/h3>/g;
-        s/\\\$\\\$\\\$ (.*) \\\$\\\$\\\$/<span class='bg-red-500\/20 border border-red-500\/50 text-red-400 px-2 py-1 rounded font-bold'>\1<\/span>/g;
-        s/\\\$\\\$ (.*) \\\$\\\$/<span class='text-amber-400 border-b border-amber-400\/30 font-semibold'>\1<\/span>/g;
-        s/\\\$ ([^$]+) \\\$/<code class='bg-slate-800 text-pink-400 px-1 rounded'>\1<\/code>/g;
-        s/&& ([^&]+) &&/<span class='bg-yellow-400\/10 text-yellow-200 px-1 underline decoration-yellow-500\/50'>\1<\/span>/g;
-        s/\\\\\\\\([^\\\\]+)\\\\\\\\/<span class='underline decoration-slate-500'>\1<\/span>/g;
-        s/\/\/([^\/]+)\/\//<span class='italic text-slate-400'>\1<\/em>/g;
-        s/\*\*([^*]+)\*\*/<strong class='text-white font-bold'>\1<\/strong>/g;
-        s/\^ ([^^]+) \^/<p class='text-xs text-slate-500 mt-1 italic'>\1<\/p>/g;
-        s/-->/<span class='text-orange-400 font-bold ml-2'>\&rdsh;<\/span>/g;
-        s/->/<span class='text-orange-500 font-bold'>\&rarr;<\/span>/g;
-    " "$SOURCE_DOCS" | awk '
-    BEGIN { in_code=0; }
-    
-    # Handle Tree Lines (preserve leading spaces)
-    /^\|/ {
-        print "<div class=\"mside-tree text-slate-500 whitespace-pre\">" $0 "</div>";
-        next;
+    awk '
+    function escape(str) {
+        gsub(/&/, "\&amp;", str); gsub(/</, "\&lt;", str); gsub(/>/, "\&gt;", str);
+        return str;
     }
 
-    # Handle Code Blocks
+    function process_inline(line) {
+        # 1. Handle Headers (Block-level identification)
+        if (line ~ /^### /) { sub(/^### /, "", line); return "<h3 class=\"text-xl font-bold text-slate-200 mt-10 mb-2\">" line "</h3>"; }
+        if (line ~ /^## /) { sub(/^## /, "", line); return "<h2 class=\"text-2xl font-semibold text-sky-400 mt-12 mb-4\">" line "</h2>"; }
+        if (line ~ /^# /) { sub(/^# /, "", line); return "<h1 class=\"text-4xl font-black text-white mt-20 mb-8 text-center border-b border-slate-800 pb-4\">" line "</h1>"; }
+
+        # 2. Simple Replacements (No capture groups to avoid \1 issues)
+        gsub(/@@@ /, "<div class=\"bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded font-bold my-8 inline-block uppercase tracking-widest text-xs\">", line);
+        gsub(/ @@@/, "</div>", line);
+        
+        gsub(/\$\$\$ /, "<div class=\"bg-red-500/20 border border-red-500/50 text-red-400 px-6 py-4 rounded-lg font-black my-8 text-center uppercase tracking-widest italic\">", line);
+        gsub(/ \$\$\$/, "</div>", line);
+
+        gsub(/\$\$ /, "<span class=\"bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-1 rounded text-sm font-bold\">", line);
+        gsub(/ \$\$/, "</span>", line);
+
+        gsub(/&& /, "<span class=\"bg-yellow-400/10 text-yellow-200 px-1 underline decoration-yellow-500/50\">", line);
+        gsub(/ &&/, "</span>", line);
+
+        # 3. Handle Underlines (\\\\)
+        gsub(/\\\\ /, "<span class=\"underline decoration-slate-600\">", line);
+        gsub(/ \\\\/, "</span>", line);
+
+        # 4. Handle Code Spans ($ ... $)
+        gsub(/\$ /, "<code class=\"bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono\">", line);
+        gsub(/ \$/, "</code>", line);
+
+        # 5. Handle Italics (// ... //)
+        gsub(/\/\/ /, "<span class=\"italic text-slate-400\">", line);
+        gsub(/ \/\//, "</span>", line);
+
+        # 6. Arrows and Citations
+        gsub(/-->/, "<span class=\"text-orange-400 font-bold ml-2\">\&rdsh;</span>", line);
+        gsub(/->/, "<span class=\"text-orange-500 font-bold ml-1\">\&rarr;</span>", line);
+        gsub(/\+)\]/, "<span class=\"cite-tag\">[\\1]</span>", line);
+        
+        # 7. Footnotes/Smalltext
+        gsub(/\^ /, "<p class=\"text-xs text-slate-500 mt-1 italic tracking-tight\">", line);
+        gsub(/ \^/, "</p>", line);
+
+        return line;
+    }
+
+    BEGIN { in_code = 0; }
+
+    # Code Blocks
     /^\|\|/ {
-        if (!in_code) { 
-            print "<div class=\"mside-code border border-slate-700 rounded-lg p-6 my-6 text-sm text-sky-300 shadow-2xl\"><pre>"; 
-            in_code=1; 
-        } else { 
-            print "</pre></div>"; 
-            in_code=0; 
+        if (!in_code) {
+            print "<div class=\"mside-code rounded-xl p-6 my-8 text-sm text-sky-300 shadow-2xl\"><pre><code>";
+            in_code = 1;
+        } else {
+            print "</code></pre></div>";
+            in_code = 0;
         }
         next;
     }
 
-    # Content inside/outside code
+    # Tree Structure
+    /^\|/ {
+        if (!in_code) {
+            print "<div class=\"mside-tree whitespace-pre\">" process_inline($0) "</div>";
+            next;
+        }
+    }
+
     {
         if (in_code) {
-            # Escape HTML tags inside code blocks
-            gsub(/</, "&lt;"); gsub(/>/, "&gt;");
-            print $0;
+            print escape($0);
         } else {
-            if (length($0) > 0 && $0 !~ /<h/ && $0 !~ /<div/ && $0 !~ /---/) {
-                print "<p class=\"mb-4\">" $0 "</p>";
+            if ($0 ~ /^[[:space:]]*$/) { next; }
+            if ($0 == "---") { print "<hr class=\"my-20 border-slate-800\"/>"; next; }
+            
+            content = process_inline($0);
+            if (content ~ /^<(h1|h2|h3|div|p|hr)/) {
+                print content;
             } else {
-                print $0;
+                print "<p class=\"mb-6 leading-relaxed text-slate-300\">" content "</p>";
             }
         }
     }
-    '
-    
-    echo "</div><footer class='mt-20 border-t border-slate-800 p-8 text-center text-slate-600 text-xs tracking-widest uppercase'>"
+    ' "$SOURCE_DOCS"
+
+    echo "</div><footer class='mt-32 border-t border-slate-900 p-16 text-center text-slate-600 text-[10px] tracking-[0.5em] uppercase'>"
     echo "Built with Mark-Sideways & Tailwind CSS"
     echo "</footer></body></html>"
 } > "$OUTPUT_DIR/docs.html"
