@@ -6,27 +6,27 @@
 The `SimpleConflictsFixer` is a specialized header designed to prevent naming collisions between the Windows API and modern C/C++ libraries or custom user code.
 It specifically targets common function names that `windows.h` defines as macros, which often "pollute" the global namespace.
 
--> Platform Specific: This module only executes logic if $_WIN32$ is defined[cite: 1].
---> Target Version: Forces $_WIN32_WINNT$ to $0x0600$ (Windows Vista or higher)[cite: 1].
+-> Platform Specific: This module only executes logic if $_WIN32$ is defined.
+--> Target Version: Forces $_WIN32_WINNT$ to $0x0600$ (Windows Vista or higher).
 
 | Collision Management
 |
 | -- > Temporary Macro Redefinition
-|    | -- > $CloseWindow$ -> $WinCloseWindow$ [cite: 1]
-|    | -- > $ShowCursor$ -> $WinShowCursor$ [cite: 1]
-|    | -- > $Rectangle$ -> $WinRectangle$ [cite: 1]
-|    | -- > $DrawText$ -> $WinDrawText$ [cite: 1]
+|    | -- > $CloseWindow$ -> $WinCloseWindow$ 
+|    | -- > $ShowCursor$ -> $WinShowCursor$ 
+|    | -- > $Rectangle$ -> $WinRectangle$ 
+|    | -- > $DrawText$ -> $WinDrawText$ 
 |
 | -- > Post-Include Cleanup
-|    | -- > All temporary $Win$ macros are $#undef$ after headers are loaded[cite: 1].
-|    | -- > Explicitly $#undef interface$ to prevent COM conflicts[cite: 1].
+|    | -- > All temporary $Win$ macros are $#undef$ after headers are loaded.
+|    | -- > Explicitly $#undef interface$ to prevent COM conflicts.
 
 ## Protected Headers
 The following system headers are wrapped by this fixer to ensure they do not break external logic:
 
-1.  $winsock2.h$ [cite: 1]
-2.  $windows.h$ [cite: 1]
-3.  $objbase.h$ [cite: 1]
+1.  $winsock2.h$ 
+2.  $windows.h$ 
+3.  $objbase.h$ 
 
 $$ High Priority $$
 \\ This header should be included BEFORE other QOL modules that utilize networking or graphics to ensure symbols like "Rectangle" remain available for custom use. \\

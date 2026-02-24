@@ -4,57 +4,57 @@
 @@@ Feature Overview @@@
 
 `SimpleTools` provides cross-platform utility functions for string manipulation, memory inspection, and time tracking.
-It operates independently and includes built-in shims for platform-specific timing. [cite: 1]
+It operates independently and includes built-in shims for platform-specific timing. 
 
--> Cross-Platform: Automatically handles $ usleep $ and $ sleep $ for Windows and POSIX. [cite: 1]
---> Core Buffer: Default $ MAX_HTTP_BUF $ set to 65536. [cite: 1]
+-> Cross-Platform: Automatically handles $ usleep $ and $ sleep $ for Windows and POSIX. 
+--> Core Buffer: Default $ MAX_HTTP_BUF $ set to 65536. 
 
 | Internal Logic
 |
 | -- > $ hexdmp(void* ptr, int buflen) $
-|    | -- > Prints raw memory in hex format (16 bytes per line). [cite: 1]
+|    | -- > Prints raw memory in hex format (16 bytes per line). 
 |
 | -- > $ _str_replace_logic $
-|    | -- > The engine behind all string replacement APIs. [cite: 1]
+|    | -- > The engine behind all string replacement APIs. 
 
 ## String Replacement API
-% Dynamic Memory: These functions return a $ malloc'd $ string. Always $ free() $ after use! % [cite: 1]
+% Dynamic Memory: These functions return a $ malloc'd $ string. Always $ free() $ after use! % 
 
 | Function | Description
 |
-| -- > $ str_replace_first $ | Replaces only the first match found. [cite: 1]
-| -- > $ str_replace_all $   | Replaces every occurrence of the target string. [cite: 1]
-| -- > $ str_replace_nth $   | Replaces a specific occurrence by index. [cite: 1]
-| -- > $ str_replace_count $ | Replaces matches up to a specific count. [cite: 1]
-| -- > $ str_replace_range $ | Replaces matches between a start and end index. [cite: 1]
+| -- > $ str_replace_first $ | Replaces only the first match found. 
+| -- > $ str_replace_all $   | Replaces every occurrence of the target string. 
+| -- > $ str_replace_nth $   | Replaces a specific occurrence by index. 
+| -- > $ str_replace_count $ | Replaces matches up to a specific count. 
+| -- > $ str_replace_range $ | Replaces matches between a start and end index. 
 
 ## String Search & Validation
-&& Failsafe: Returns 0 (False) if input pointers are NULL. && [cite: 1]
+&& Failsafe: Returns 0 (False) if input pointers are NULL. && 
 
-* **str_starts** : Check if string begins with a prefix. [cite: 1]
-* **str_ends** : Check if string ends with a suffix. [cite: 1]
-* **str_contains** : Standard substring search. [cite: 1]
-* **str_is_numeric** : Validates if string consists only of digits. [cite: 1]
+* **str_starts** : Check if string begins with a prefix. 
+* **str_ends** : Check if string ends with a suffix. 
+* **str_contains** : Standard substring search. 
+* **str_is_numeric** : Validates if string consists only of digits. 
 
 ## Formatting & Time
-\\ Note: str_format uses a static allocation of MAX_HTTP_BUF. \\ [cite: 1]
+\\ Note: str_format uses a static allocation of MAX_HTTP_BUF. \\ 
 
 ||
 // Formatting Examples
-char* s = str_format("User ID: %d", 101); [cite: 1]
-str_upper(s); // "USER ID: 101" [cite: 1]
-str_trim(s);  // Removes whitespace [cite: 1]
+char* s = str_format("User ID: %d", 101); 
+str_upper(s); // "USER ID: 101" 
+str_trim(s);  // Removes whitespace 
 ||
 
 ^ **Time Tools** ^
-* $ time_now() $ : Returns current date/time as "YYYY-MM-DD HH:MM:SS". [cite: 1]
-* $ time_unix() $ : Returns raw unix timestamp as a $ long $. [cite: 1]
+* $ time_now() $ : Returns current date/time as "YYYY-MM-DD HH:MM:SS". 
+* $ time_unix() $ : Returns raw unix timestamp as a $ long $. 
 
 $$$ JSON Builder $$$
-&& use $ json_obj $ to build JSON strings with type-prefixing (s:string, i:int, f:float, b:bool). && [cite: 1]
+&& use $ json_obj $ to build JSON strings with type-prefixing (s:string, i:int, f:float, b:bool). && 
 
 ||
 // JSON Example
-char* j = json_obj("s:name, i:age, b:active", "Ted", 21, 1); [cite: 1]
+char* j = json_obj("s:name, i:age, b:active", "Ted", 21, 1); 
 // Returns: {"name":"Ted", "age":21, "active":true}
 ||

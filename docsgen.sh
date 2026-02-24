@@ -1,5 +1,5 @@
 #!/bin/bash
-
+sed -i 's/\[cite[: ]*[^]]*\]//g' Alldocs.mside
 SOURCE_DOCS="Alldocs.mside"
 OUTPUT_DIR="docs"
 TAILWIND_FILE="$OUTPUT_DIR/tailwind.js"
