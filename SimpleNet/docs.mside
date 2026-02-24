@@ -54,5 +54,5 @@ while(1) {
 $$ High Priority $$
 \\ Ensure that you call $ net_host $ or $ net_connect $ before attempting to read/write to a specific ID index! \\ 
 
-$$$ Critical Warning $$$
+$$$ Warning!! $$$
 && The internal buffer $ _net_static_buf $ is shared across all IDs. If you need to preserve data between consecutive $ net_read $ calls across different IDs, you must copy the data to your own buffer. && 

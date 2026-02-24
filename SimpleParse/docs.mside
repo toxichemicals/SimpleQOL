@@ -47,5 +47,5 @@ Parsed p = advparse(code, 1);
 $$ High Priority $$
 \\ All string fields in the $ Parsed $ struct have a fixed limit of 256 characters. \\
 
-$$$ Critical Warning $$$
+$$$ Warning!! $$$
 && Ensure the $ haystack $ buffer is null-terminated before passing it to any $ SimpleParse $ function to avoid memory overruns. &&

@@ -236,7 +236,7 @@ while(1) {
 $$ High Priority $$
 \\ The $ http_reply $ function automatically handles closing the client socket and resetting the request state. \\
 
-$$$ Critical Warning $$$
+$$$ Warning!! $$$
 && $ http_param $ and $ http_request $ use static or internal buffers. Copy the data if you need to preserve it across multiple calls. &&
 
 
@@ -300,7 +300,7 @@ while(1) {
 $$ High Priority $$
 \\ Ensure that you call $ net_host $ or $ net_connect $ before attempting to read/write to a specific ID index! \\ 
 
-$$$ Critical Warning $$$
+$$$ Warning!! $$$
 && The internal buffer $ _net_static_buf $ is shared across all IDs. If you need to preserve data between consecutive $ net_read $ calls across different IDs, you must copy the data to your own buffer. && 
 
 
@@ -357,7 +357,7 @@ Parsed p = advparse(code, 1);
 $$ High Priority $$
 \\ All string fields in the $ Parsed $ struct have a fixed limit of 256 characters. \\
 
-$$$ Critical Warning $$$
+$$$ Warning!! $$$
 && Ensure the $ haystack $ buffer is null-terminated before passing it to any $ SimpleParse $ function to avoid memory overruns. &&
 
 

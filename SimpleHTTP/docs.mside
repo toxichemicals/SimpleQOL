@@ -50,5 +50,5 @@ while(1) {
 $$ High Priority $$
 \\ The $ http_reply $ function automatically handles closing the client socket and resetting the request state. \\
 
-$$$ Critical Warning $$$
+$$$ Warning!! $$$
 && $ http_param $ and $ http_request $ use static or internal buffers. Copy the data if you need to preserve it across multiple calls. &&
