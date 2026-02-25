@@ -1,0 +1,78 @@
+# Module: SimpleThreads.h
+## Cross-Platform Multi-Threading Library
+
+@@@ Feature Overview @@@
+
+SimpleThreads is a zero-boilerplate, single-header library for C. It abstracts away the differences between Win32 API and POSIX Threads ($ pthreads $) using an ID-based system.
+
+# Functionality
+## Thread Management
+### Core API
+
+-> Uses a static pool of $ 256 $ thread slots.
+--> Automatic return type detection via C11 $ _Generic $.
+--> Argument strings are automatically parsed and passed to functions.
+
+| Library Suite
+| -- > spawnthread(fn, args, id)
+|    | -- > Automatically detects if $ fn $ returns $ int $, $ double $, or $ void* $
+|    | -- > Parses $ args $ as a comma-separated string
+| -- > getreturn(id)
+|    | -- > Blocks until thread completes
+|    | -- > Returns a $ void* $ (Must be cast by user)
+| -- > isrunning(id)
+|    | -- > Returns $ 1 $ if thread is active, $ 0 $ if finished/empty
+| -- > killthread(id)
+|    | -- > Force terminates a specific slot
+| -- > bombthreads()
+|    | -- > Nukes all active threads in the pool
+| -- > secondsleep(float)
+|    | -- > Universal precision sleep ($ seconds $)
+
+## Implementation Example
+Launching background tasks and retrieving data:
+
+|| 
+   int my_calc(int a, int b) {
+       return a + b;
+   }
+
+   char* my_name(char* input) {
+       return input;
+   }
+
+   // Inside main
+   spawnthread(my_calc, "10, 20", 0);
+   spawnthread(my_name, "\"Ted\"", 1);
+
+   int res = *(int*)getreturn(0);
+   char* name = (char*)getreturn(1);
+||
+
+## Priority Operations
+$$ High Priority $$
+\\ Thread results for $ int $ and $ double $ are heap-allocated (boxed). \\
+\\ You must call getreturn() to retrieve the data and clear the slot! \\
+
+$$$ Critical Warning $$$
+&& Always use an ID between 0 and 255 &&
+^ Accessing an ID outside this range will result in no-op or corruption. ^
+
+## Thread Life-Cycle
+% Efficiency: Lightweight wrappers around native OS calls %
+
+| Standard Workflow
+| -- > Define Function: \\ int my_func(int x) \\
+| -- > Spawn: $ spawnthread(my_func, "5", 1) $
+|    | -- > Library creates internal $ _st_pkt $
+|    | -- > Thread enters $ _st_entry $
+| -- > Status Check: $ isrunning(1) $
+| -- > Sync: $ getreturn(1) $
+|    | -- > Joins thread and retrieves $ _st_results[1] $
+
+## Argument Formatting
+If you are referencing a specific return type, use \\ int \\ or \\ void* \\.
+
+-> **Integers**: Pass as standard strings: $ "10, 20, 30" $
+-> **Strings**: Wrap internal strings in escaped quotes: $ "\"Hello!\"" $
+-> **Empty**: Use an empty string $ "" $ for functions with no parameters.

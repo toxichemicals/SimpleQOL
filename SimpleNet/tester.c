@@ -1,65 +1,111 @@
 #include "simple_net.h"
+#include <stdio.h>
 
-int main() {
-    // 1. Test net_init()
-    net_init();
-    printf("Network initialized.\n");
-
-    // 2. Test openudp() and opentcp()
-    // Opening a UDP socket on port 5000 (Slot 0)
-    if (openudp("127.0.0.1", 5000, 0)) {
-        printf("UDP socket opened on port 5000 (ID 0).\n");
-    }
-
-    // Opening a TCP listener on port 6000 (Slot 1)
-    if (opentcp("127.0.0.1", 6000, 1)) {
-        printf("TCP listener opened on port 6000 (ID 1).\n");
-    }
-
-    // 3. Test connecttcp()
-    // Try to connect Slot 2 to the listener on Slot 1
-    if (connecttcp(2, "127.0.0.1", 6000)) {
-        printf("TCP client (ID 2) connecting to port 6000...\n");
-    }
-
-    // 4. Test isconnected()
-    if (isconnected(2)) {
-        printf("Slot 2 is connected.\n");
-    }
-
-    // 5. Test senddata()
-    // UDP send (ID 0 sends to itself)
-    senddata(0, "127.0.0.1", 5000, "Hello UDP");
-    
-    // TCP send (Client ID 2 sends to Listener ID 1)
-    senddata(2, "127.0.0.1", 6000, "Hello TCP");
-
-    // 6. Test receivefrom() and getclientinfo()
-    // Give the OS a moment to process the local packets
 #ifdef _WIN32
-    Sleep(100);
+    #include <windows.h>
+    #define sleep_ms(x) Sleep(x)
+    unsigned __stdcall server_thread(void* arg);
+    unsigned __stdcall client_thread(void* arg);
 #else
-    usleep(100000);
+    #include <pthread.h>
+    #include <unistd.h>
+    #define sleep_ms(x) usleep((x) * 1000)
+    void* server_thread(void* arg);
+    void* client_thread(void* arg);
 #endif
 
-    char* udp_data = receivefrom(0);
-    if (udp_data) {
-        ClientInfo info = getclientinfo(0);
-        printf("UDP Received: %s from %s:%d\n", udp_data, info.host, info.port);
+#define SERVER_ID 0
+#define CLIENT_START_ID 1
+#define NUM_CLIENTS 5
+#define TEST_PORT 8080
+
+int main() {
+    net_init(); // Initialize global mutex and networking
+    printf("--- Starting Thread Safety Test (Max IDs: %d) ---\n", MAX_IDS);
+
+    // 1. Start Server Socket
+    if (!openudp("127.0.0.1", TEST_PORT, SERVER_ID)) {
+        printf("Failed to open server socket.\n");
+        return 1;
+    }
+    printf("Server listening on port %d (ID: %d)\n", TEST_PORT, SERVER_ID);
+
+    // 2. Launch Server Thread
+#ifdef _WIN32
+    _beginthreadex(NULL, 0, server_thread, NULL, 0, NULL);
+#else
+    pthread_t serv_tid;
+    pthread_create(&serv_tid, NULL, server_thread, NULL);
+#endif
+
+    // 3. Launch Multiple Client Threads
+#ifdef _WIN32
+    HANDLE clients[NUM_CLIENTS];
+    for (int i = 0; i < NUM_CLIENTS; i++) {
+        int* id = malloc(sizeof(int));
+        *id = CLIENT_START_ID + i;
+        clients[i] = (HANDLE)_beginthreadex(NULL, 0, client_thread, id, 0, NULL);
+    }
+    WaitForMultipleObjects(NUM_CLIENTS, clients, TRUE, INFINITE);
+#else
+    pthread_t clients[NUM_CLIENTS];
+    for (long i = 0; i < NUM_CLIENTS; i++) {
+        pthread_create(&clients[i], NULL, client_thread, (void*)(i + CLIENT_START_ID));
+    }
+    for (int i = 0; i < NUM_CLIENTS; i++) {
+        pthread_join(clients[i], NULL);
+    }
+#endif
+
+    printf("Test complete. Cleaning up...\n");
+    closesocket_id(SERVER_ID);
+    return 0;
+}
+
+/* --- Server Logic --- */
+#ifdef _WIN32
+unsigned __stdcall server_thread(void* arg) {
+#else
+void* server_thread(void* arg) {
+#endif
+    char buf[MAX_NET_BUF];
+    printf("[Server] Thread started.\n");
+    
+    int messages_received = 0;
+    while (messages_received < NUM_CLIENTS) {
+        // Using the new thread-safe receive function
+        int bytes = receivefrom_safe(SERVER_ID, buf, MAX_NET_BUF);
+        if (bytes > 0) {
+            ClientInfo info = getclientinfo(SERVER_ID);
+            printf("[Server] Received: '%s' from %s:%d\n", buf, info.host, info.port);
+            messages_received++;
+        }
+        sleep_ms(10);
+    }
+    return 0;
+}
+
+/* --- Client Logic --- */
+#ifdef _WIN32
+unsigned __stdcall client_thread(void* arg) {
+    int id = *(int*)arg;
+    free(arg);
+#else
+void* client_thread(void* arg) {
+    int id = (int)(long)arg;
+#endif
+    char msg[64];
+    sprintf(msg, "Hello from Client ID %d", id);
+    
+    sleep_ms(id * 50); // Stagger starts slightly
+    
+    // senddata handles its own locking internally
+    if (senddata(id, "127.0.0.1", TEST_PORT, msg)) {
+        printf("[Client %d] Sent message successfully.\n", id);
+    } else {
+        printf("[Client %d] Failed to send.\n", id);
     }
 
-    // 7. Test receivefrompro()
-    // This will accept the connection on ID 1 and read the data
-    Packet p = receivefrompro(1);
-    if (p.data) {
-        printf("TCP Packet Received: %s from %s:%d\n", p.data, p.host, p.port);
-    }
-
-    // 8. Test closesocket_id()
-    closesocket_id(0);
-    closesocket_id(1);
-    closesocket_id(2);
-    printf("All sockets closed. Test complete.\n");
-
+    closesocket_id(id);
     return 0;
 }

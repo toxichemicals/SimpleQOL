@@ -21,9 +21,9 @@
 <div class='max-w-4xl mx-auto px-8 py-16'>
 <header class='mb-20 border-b border-slate-800 pb-10 text-center'>
 <h1 class='text-5xl font-extrabold text-white tracking-tighter mb-4'>QOL Library | Mark-Sideways</h1>
-<p class='text-slate-500 font-mono text-xs uppercase tracking-[0.3em]'>System Documentation // 2026-02-23</p>
+<p class='text-slate-500 font-mono text-xs uppercase tracking-[0.3em]'>System Documentation // 2026-02-24</p>
 </header>
-<div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded font-bold my-8 inline-block uppercase tracking-widest text-xs">Module: Simple_BUDP</div>
+<div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded font-bold my-8 inline-block uppercase tracking-widest text-xs">Module: SimpleBUDP</div>
 <h1 class="text-4xl font-black text-white mt-20 mb-8 text-center border-b border-slate-800 pb-4">Module: simple_budp.h</h1>
 <h2 class="text-2xl font-semibold text-sky-400 mt-12 mb-4">Secure UDP Communication Library</h2>
 <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded font-bold my-8 inline-block uppercase tracking-widest text-xs">Feature Overview</div>
@@ -298,6 +298,73 @@ Parsed p = advparse(code, 1);
 <p class="mb-6 leading-relaxed text-slate-300"><span class="underline decoration-slate-600">All string fields in the <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">Parsed <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">struct have a fixed limit of 256 characters.</span></p>
 <div class="bg-red-500/20 border border-red-500/50 text-red-400 px-6 py-4 rounded-lg font-black my-8 text-center uppercase tracking-widest italic">Warning!!</div>
 <p class="mb-6 leading-relaxed text-slate-300"><span class="bg-yellow-400/10 text-yellow-200 px-1 underline decoration-yellow-500/50">Ensure the <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">haystack <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">buffer is null-terminated before passing it to any <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">SimpleParse <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">function to avoid memory overruns.</span></p>
+<hr class="my-20 border-slate-800"/>
+<div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded font-bold my-8 inline-block uppercase tracking-widest text-xs">Module: SimpleThreads</div>
+<h1 class="text-4xl font-black text-white mt-20 mb-8 text-center border-b border-slate-800 pb-4">Module: SimpleThreads.h</h1>
+<h2 class="text-2xl font-semibold text-sky-400 mt-12 mb-4">Cross-Platform Multi-Threading Library</h2>
+<div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded font-bold my-8 inline-block uppercase tracking-widest text-xs">Feature Overview</div>
+<p class="mb-6 leading-relaxed text-slate-300">SimpleThreads is a zero-boilerplate, single-header library for C. It abstracts away the differences between Win32 API and POSIX Threads (<code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">pthreads</code>) using an ID-based system.</p>
+<h1 class="text-4xl font-black text-white mt-20 mb-8 text-center border-b border-slate-800 pb-4">Functionality</h1>
+<h2 class="text-2xl font-semibold text-sky-400 mt-12 mb-4">Thread Management</h2>
+<h3 class="text-xl font-bold text-slate-200 mt-10 mb-2">Core API</h3>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="text-orange-500 font-bold ml-1">->rarr;</span> Uses a static pool of <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">256 <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">thread slots.</p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="text-orange-400 font-bold ml-2">-<span class="text-orange-500 font-bold ml-1">->rarr;</span>rdsh;</span> Automatic return type detection via C11 <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">_Generic</code>.</p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="text-orange-400 font-bold ml-2">-<span class="text-orange-500 font-bold ml-1">->rarr;</span>rdsh;</span> Argument strings are automatically parsed and passed to functions.</p>
+<div class="mside-tree whitespace-pre">| Library Suite</div>
+<div class="mside-tree whitespace-pre">| -- > spawnthread(fn, args, id)</div>
+<div class="mside-tree whitespace-pre">|    | -- > Automatically detects if <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">fn <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">returns <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">int</code>, <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">double</code>, or <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">void*</code></div>
+<div class="mside-tree whitespace-pre">|    | -- > Parses <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">args <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">as a comma-separated string</div>
+<div class="mside-tree whitespace-pre">| -- > getreturn(id)</div>
+<div class="mside-tree whitespace-pre">|    | -- > Blocks until thread completes</div>
+<div class="mside-tree whitespace-pre">|    | -- > Returns a <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">void* <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">(Must be cast by user)</div>
+<div class="mside-tree whitespace-pre">| -- > isrunning(id)</div>
+<div class="mside-tree whitespace-pre">|    | -- > Returns <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">1 <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">if thread is active, <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">0 <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">if finished/empty</div>
+<div class="mside-tree whitespace-pre">| -- > killthread(id)</div>
+<div class="mside-tree whitespace-pre">|    | -- > Force terminates a specific slot</div>
+<div class="mside-tree whitespace-pre">| -- > bombthreads()</div>
+<div class="mside-tree whitespace-pre">|    | -- > Nukes all active threads in the pool</div>
+<div class="mside-tree whitespace-pre">| -- > secondsleep(float)</div>
+<div class="mside-tree whitespace-pre">|    | -- > Universal precision sleep (<code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">seconds</code>)</div>
+<h2 class="text-2xl font-semibold text-sky-400 mt-12 mb-4">Implementation Example</h2>
+<p class="mb-6 leading-relaxed text-slate-300">Launching background tasks and retrieving data:</p>
+<div class="mside-code rounded-xl p-6 my-8 text-sm text-sky-300 shadow-2xl"><pre><code>
+   int my_calc(int a, int b) {
+       return a + b;
+   }
+
+   char* my_name(char* input) {
+       return input;
+   }
+
+   // Inside main
+   spawnthread(my_calc, "10, 20", 0);
+   spawnthread(my_name, "\"Ted\"", 1);
+
+   int res = *(int*)getreturn(0);
+   char* name = (char*)getreturn(1);
+</code></pre></div>
+<h2 class="text-2xl font-semibold text-sky-400 mt-12 mb-4">Priority Operations</h2>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-1 rounded text-sm font-bold">High Priority</span></p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="underline decoration-slate-600">Thread results for <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">int <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">and <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">double <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">are heap-allocated (boxed).</span></p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="underline decoration-slate-600">You must call getreturn() to retrieve the data and clear the slot!</span></p>
+<div class="bg-red-500/20 border border-red-500/50 text-red-400 px-6 py-4 rounded-lg font-black my-8 text-center uppercase tracking-widest italic">Critical Warning</div>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="bg-yellow-400/10 text-yellow-200 px-1 underline decoration-yellow-500/50">Always use an ID between 0 and 255</span></p>
+<p class="text-xs text-slate-500 mt-1 italic tracking-tight">Accessing an ID outside this range will result in no-op or corruption.</p>
+<h2 class="text-2xl font-semibold text-sky-400 mt-12 mb-4">Thread Life-Cycle</h2>
+<p class="mb-6 leading-relaxed text-slate-300">% Efficiency: Lightweight wrappers around native OS calls %</p>
+<div class="mside-tree whitespace-pre">| Standard Workflow</div>
+<div class="mside-tree whitespace-pre">| -- > Define Function: <span class="underline decoration-slate-600">int my_func(int x)</span></div>
+<div class="mside-tree whitespace-pre">| -- > Spawn: <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">spawnthread(my_func, "5", 1)</code></div>
+<div class="mside-tree whitespace-pre">|    | -- > Library creates internal <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">_st_pkt</code></div>
+<div class="mside-tree whitespace-pre">|    | -- > Thread enters <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">_st_entry</code></div>
+<div class="mside-tree whitespace-pre">| -- > Status Check: <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">isrunning(1)</code></div>
+<div class="mside-tree whitespace-pre">| -- > Sync: <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">getreturn(1)</code></div>
+<div class="mside-tree whitespace-pre">|    | -- > Joins thread and retrieves <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">_st_results[1]</code></div>
+<h2 class="text-2xl font-semibold text-sky-400 mt-12 mb-4">Argument Formatting</h2>
+<p class="mb-6 leading-relaxed text-slate-300">If you are referencing a specific return type, use <span class="underline decoration-slate-600">int <span class="underline decoration-slate-600">or <span class="underline decoration-slate-600">void*</span>.</p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="text-orange-500 font-bold ml-1">->rarr;</span> **Integers**: Pass as standard strings: <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">"10, 20, 30"</code></p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="text-orange-500 font-bold ml-1">->rarr;</span> **Strings**: Wrap internal strings in escaped quotes: <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">"\"Hello!\""</code></p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="text-orange-500 font-bold ml-1">->rarr;</span> **Empty**: Use an empty string <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">"" <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">for functions with no parameters.</p>
 <hr class="my-20 border-slate-800"/>
 <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded font-bold my-8 inline-block uppercase tracking-widest text-xs">Module: SimpleTools</div>
 <h1 class="text-4xl font-black text-white mt-20 mb-8 text-center border-b border-slate-800 pb-4">SimpleTools Documentation</h1>

@@ -6,7 +6,7 @@
 #define MAX_HTTP_BUF 65536
 #endif\n
 
-/* Source: Simple_BUDP/simple_budp.h */
+/* Source: SimpleBUDP/simple_budp.h */
 #ifndef SIMPLE_BUDP_H
 
 #include <stdio.h>
@@ -705,9 +705,14 @@ static inline char* http_param(const char* key) {
 #define _WIN32_WINNT 0x0600
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <process.h>
 #pragma comment(lib, "ws2_32.lib")
 typedef SOCKET net_fd;
 typedef int socklen_t;
+typedef CRITICAL_SECTION net_mutex;
+#define net_mutex_init(m) InitializeCriticalSection(m)
+#define net_lock(m)      EnterCriticalSection(m)
+#define net_unlock(m)    LeaveCriticalSection(m)
 #define net_close closesocket
 #define net_errno WSAGetLastError()
 #ifndef MSG_DONTWAIT
@@ -720,15 +725,21 @@ typedef int socklen_t;
 #include <netdb.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <pthread.h>
 typedef int net_fd;
+typedef pthread_mutex_t net_mutex;
+#define net_mutex_init(m) pthread_mutex_init(m, NULL)
+#define net_lock(m)      pthread_mutex_lock(m)
+#define net_unlock(m)    pthread_mutex_unlock(m)
 #define net_close close
 #define net_errno errno
 #define INVALID_SOCKET -1
 #endif
 
-/* --- DX Definitions --- */
+/* --- Definitions --- */
 #define UDP 0
 #define TCP 1
+#define MAX_IDS 150
 #define MAX_NET_BUF 65536
 
 typedef struct {
@@ -743,52 +754,83 @@ typedef struct {
 } Packet;
 
 /* --- Internal State --- */
-static net_fd _net_fds[10] = {(net_fd)-1,(net_fd)-1,(net_fd)-1,(net_fd)-1,(net_fd)-1,(net_fd)-1,(net_fd)-1,(net_fd)-1,(net_fd)-1,(net_fd)-1};
-static int _net_types[10] = {0,0,0,0,0,0,0,0,0,0};
-static int _net_active[10] = {0,0,0,0,0,0,0,0,0,0};
-static ClientInfo _last_client[10];
-static char _net_static_buf[MAX_NET_BUF];
+static net_mutex _net_global_lock;
+static net_fd _net_fds[MAX_IDS];
+static int _net_types[MAX_IDS];
+static int _net_active[MAX_IDS];
+static ClientInfo _last_client[MAX_IDS];
 
 /* --- Initialization --- */
 static inline void net_init() {
     static int init = 0;
     if (init) return;
+
+    net_mutex_init(&_net_global_lock);
+    net_lock(&_net_global_lock);
+
+    for(int i = 0; i < MAX_IDS; i++) {
+        _net_fds[i] = (net_fd)-1;
+        _net_types[i] = 0;
+        _net_active[i] = 0;
+    }
+
     #ifdef _WIN32
     WSADATA wsa;
     WSAStartup(MAKEWORD(2, 2), &wsa);
     #endif
+
     init = 1;
+    net_unlock(&_net_global_lock);
 }
 
 /* --- Core Functions --- */
 
 static inline void closesocket_id(int id) {
-    if (id >= 0 && id <= 9 && _net_fds[id] != (net_fd)-1) {
-        net_close(_net_fds[id]);
-        _net_fds[id] = (net_fd)-1;
-        _net_active[id] = 0;
+    if (id >= 0 && id < MAX_IDS) {
+        net_lock(&_net_global_lock);
+        if (_net_fds[id] != (net_fd)-1) {
+            net_close(_net_fds[id]);
+            _net_fds[id] = (net_fd)-1;
+            _net_active[id] = 0;
+        }
+        net_unlock(&_net_global_lock);
     }
 }
 
 static inline int isconnected(int id) {
-    if (id < 0 || id > 9 || _net_fds[id] == (net_fd)-1) return 0;
-    if (_net_types[id] == UDP) return 1;
-    if (_net_active[id] == 0) return 1;
+    int connected = 0;
+    if (id < 0 || id >= MAX_IDS) return 0;
+
+    net_lock(&_net_global_lock);
+    if (_net_fds[id] == (net_fd)-1) {
+        net_unlock(&_net_global_lock);
+        return 0;
+    }
+    if (_net_types[id] == UDP || _net_active[id] == 0) {
+        net_unlock(&_net_global_lock);
+        return 1;
+    }
 
     char temp;
     int res = recv(_net_fds[id], &temp, 1, MSG_PEEK | MSG_DONTWAIT);
-    if (res == 0) return 0;
-    #ifdef _WIN32
-    if (res < 0 && net_errno != WSAEWOULDBLOCK) return 0;
-    #else
-    if (res < 0 && errno != EAGAIN && errno != EWOULDBLOCK) return 0;
-    #endif
-    return 1;
+    if (res == 0) connected = 0;
+    else if (res < 0) {
+        #ifdef _WIN32
+        connected = (net_errno == WSAEWOULDBLOCK);
+        #else
+        connected = (errno == EAGAIN || errno == EWOULDBLOCK);
+        #endif
+    } else {
+        connected = 1;
+    }
+
+    net_unlock(&_net_global_lock);
+    return connected;
 }
 
 static inline int opensocket(char* interface, int port, int id, int type) {
     net_init();
-    if (id < 0 || id > 9) return 0;
+    if (id < 0 || id >= MAX_IDS) return 0;
     closesocket_id(id);
 
     int sock_type = (type == TCP) ? SOCK_STREAM : SOCK_DGRAM;
@@ -815,9 +857,11 @@ static inline int opensocket(char* interface, int port, int id, int type) {
 
     if (type == TCP && port != 0) listen(fd, 5);
 
+    net_lock(&_net_global_lock);
     _net_fds[id] = fd;
     _net_types[id] = type;
     _net_active[id] = 0;
+    net_unlock(&_net_global_lock);
     return 1;
 }
 
@@ -826,7 +870,7 @@ static inline int opentcp(char* interface, int port, int id) { return opensocket
 
 static inline int connecttcp(int id, char* host, int port) {
     net_init();
-    if (id < 0 || id > 9) return 0;
+    if (id < 0 || id >= MAX_IDS) return 0;
     closesocket_id(id);
 
     net_fd fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -854,22 +898,28 @@ static inline int connecttcp(int id, char* host, int port) {
     fcntl(fd, F_SETFL, O_NONBLOCK);
     #endif
 
+    net_lock(&_net_global_lock);
     _net_fds[id] = fd;
     _net_types[id] = TCP;
     _net_active[id] = 1;
+    net_unlock(&_net_global_lock);
     return 1;
 }
 
 static inline int senddata(int id, char* host, int port, char* data) {
     net_init();
-    if (id < 0 || id > 9) return 0;
+    if (id < 0 || id >= MAX_IDS) return 0;
 
+    net_lock(&_net_global_lock);
     if (_net_fds[id] == (net_fd)-1) {
+        net_unlock(&_net_global_lock);
         if (!openudp("0.0.0.0", 0, id)) return 0;
+        net_lock(&_net_global_lock);
     }
 
     struct hostent *he = gethostbyname(host);
-    if (!he) return 0;
+    if (!he) { net_unlock(&_net_global_lock); return 0; }
+
     struct sockaddr_in dest = {0};
     dest.sin_family = AF_INET;
     dest.sin_port = htons(port);
@@ -881,20 +931,26 @@ static inline int senddata(int id, char* host, int port, char* data) {
     } else {
         res = sendto(_net_fds[id], data, (int)strlen(data), 0, (struct sockaddr*)&dest, sizeof(dest));
     }
+    net_unlock(&_net_global_lock);
     return (res >= 0);
 }
 
-static inline char* receivefrom(int id) {
-    if (id < 0 || id > 9 || _net_fds[id] == (net_fd)-1) return NULL;
-    int bytes = -1;
+/* Updated for thread safety: Pass in a buffer to avoid shared state corruption */
+static inline int receivefrom_safe(int id, char* out_buf, int out_size) {
+    if (id < 0 || id >= MAX_IDS || out_buf == NULL) return -1;
 
+    net_lock(&_net_global_lock);
+    net_fd fd = _net_fds[id];
+    if (fd == (net_fd)-1) { net_unlock(&_net_global_lock); return -1; }
+
+    int bytes = -1;
     if (_net_types[id] == TCP) {
         if (_net_active[id] == 1) {
-            bytes = recv(_net_fds[id], _net_static_buf, MAX_NET_BUF - 1, 0);
+            bytes = recv(fd, out_buf, out_size - 1, 0);
         } else {
             struct sockaddr_in caddr;
             socklen_t clen = sizeof(caddr);
-            net_fd n_fd = accept(_net_fds[id], (struct sockaddr*)&caddr, &clen);
+            net_fd n_fd = accept(fd, (struct sockaddr*)&caddr, &clen);
             if (n_fd != (net_fd)-1) {
                 #ifdef _WIN32
                 unsigned long m = 1; ioctlsocket(n_fd, FIONBIO, &m);
@@ -906,40 +962,32 @@ static inline char* receivefrom(int id) {
                 _net_active[id] = 1;
                 strcpy(_last_client[id].host, inet_ntoa(caddr.sin_addr));
                 _last_client[id].port = ntohs(caddr.sin_port);
-                bytes = recv(_net_fds[id], _net_static_buf, MAX_NET_BUF - 1, 0);
+                bytes = recv(_net_fds[id], out_buf, out_size - 1, 0);
             }
         }
     } else {
         struct sockaddr_in src;
         socklen_t src_len = sizeof(src);
-        bytes = recvfrom(_net_fds[id], _net_static_buf, MAX_NET_BUF - 1, 0, (struct sockaddr*)&src, &src_len);
+        bytes = recvfrom(fd, out_buf, out_size - 1, 0, (struct sockaddr*)&src, &src_len);
         if (bytes > 0) {
             strcpy(_last_client[id].host, inet_ntoa(src.sin_addr));
             _last_client[id].port = ntohs(src.sin_port);
         }
     }
 
-    if (bytes > 0) {
-        _net_static_buf[bytes] = 0;
-        return _net_static_buf;
-    }
-    return NULL;
-}
-
-static inline Packet receivefrompro(int id) {
-    Packet p = {NULL, "", 0};
-    char* d = receivefrom(id);
-    if (d) {
-        p.data = d;
-        strcpy(p.host, _last_client[id].host);
-        p.port = _last_client[id].port;
-    }
-    return p;
+    if (bytes > 0) out_buf[bytes] = 0;
+    net_unlock(&_net_global_lock);
+    return bytes;
 }
 
 static inline ClientInfo getclientinfo(int id) {
-    if (id < 0 || id > 9) { ClientInfo e = {"", 0}; return e; }
-    return _last_client[id];
+    ClientInfo info = {"", 0};
+    if (id >= 0 && id < MAX_IDS) {
+        net_lock(&_net_global_lock);
+        info = _last_client[id];
+        net_unlock(&_net_global_lock);
+    }
+    return info;
 }
 
 #endif
@@ -1085,6 +1133,139 @@ static inline Parsed parselinecon(const char* haystack, int line_num, const char
     }
     return p;
 }
+
+#endif
+
+
+/* Source: SimpleThreads/simple_threads.h */
+#ifndef SIMPLE_THREADS_H
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#if defined(_WIN32) || defined(_WIN64)
+    #include <windows.h>
+    typedef HANDLE native_t;
+#else
+    #define _GNU_SOURCE
+    #include <pthread.h>
+    #include <unistd.h>
+    typedef pthread_t native_t;
+#endif
+
+#define MAX_THREADS 256
+static native_t _st_pool[MAX_THREADS] = {0};
+static void* _st_results[MAX_THREADS] = {0};
+
+typedef struct {
+    void* user_fn;
+    char* args_str;
+    int id;
+    int type; 
+    int arg_count; 
+} _st_pkt;
+
+static char* _st_strdup(const char* s) {
+    if (!s) return NULL;
+    size_t len = strlen(s) + 1;
+    char* d = malloc(len);
+    if (d) memcpy(d, s, len);
+    return d;
+}
+
+#ifdef _WIN32
+static DWORD WINAPI _st_entry(LPVOID p) {
+#else
+static void* _st_entry(void* p) {
+#endif
+    _st_pkt* pkt = (_st_pkt*)p;
+    int i[4] = {0};
+    char s_buf[256] = {0};
+
+    if (pkt->args_str && pkt->args_str[0] == '\"') {
+        sscanf(pkt->args_str, "\"%[^\"]\"", s_buf);
+    } else if (pkt->args_str) {
+        sscanf(pkt->args_str, "%d, %d, %d, %d", &i[0], &i[1], &i[2], &i[3]);
+    }
+
+    if (pkt->type == 1) {
+        int r = 0;
+        if (pkt->arg_count == 0) r = ((int (*)())pkt->user_fn)();
+        else if (pkt->arg_count == 1) r = ((int (*)(int))pkt->user_fn)(i[0]);
+        else r = ((int (*)(int, int))pkt->user_fn)(i[0], i[1]);
+        int* b = malloc(sizeof(int)); *b = r; _st_results[pkt->id] = b;
+    } else {
+        void* r = NULL;
+        if (pkt->arg_count == 0) r = ((void* (*)())pkt->user_fn)();
+        else if (pkt->args_str && pkt->args_str[0] == '\"') r = ((void* (*)(char*))pkt->user_fn)(s_buf);
+        else if (pkt->arg_count == 1) r = ((void* (*)(int))pkt->user_fn)(i[0]);
+        else r = ((void* (*)(int, int))pkt->user_fn)(i[0], i[1]);
+        _st_results[pkt->id] = r;
+    }
+    free(pkt->args_str); free(pkt); return 0;
+}
+
+static inline void _st_spawn(void* fn, char* args, int id, int type, int count) {
+    if (id < 0 || id >= MAX_THREADS) return;
+    _st_pkt* p = malloc(sizeof(_st_pkt));
+    p->user_fn = fn; p->args_str = _st_strdup(args);
+    p->id = id; p->type = type; p->arg_count = count;
+#ifdef _WIN32
+    _st_pool[id] = CreateThread(NULL, 0, _st_entry, p, 0, NULL);
+#else
+    pthread_create(&_st_pool[id], NULL, _st_entry, p);
+#endif
+}
+
+#define spawnthread(fn, args, id) { \
+    int cnt = 0; \
+    if (strlen(args) > 0) { cnt = 1; for(int _j=0; args[_j]; _j++) if(args[_j]==',') cnt++; } \
+    _st_spawn(fn, args, id, _Generic((fn), \
+        int (*)(): 1, int (*)(int): 1, int (*)(int,int): 1, \
+        int (*)(int,int,int): 1, int (*)(int,int,int,int): 1, \
+        default: 0), cnt); \
+}
+
+static inline int isrunning(int id) {
+    if (id < 0 || id >= MAX_THREADS || !_st_pool[id]) return 0;
+#ifdef _WIN32
+    return WaitForSingleObject(_st_pool[id], 0) == WAIT_TIMEOUT;
+#else
+    return pthread_kill(_st_pool[id], 0) == 0;
+#endif
+}
+
+static inline void* getreturn(int id) {
+    if (id < 0 || id >= MAX_THREADS || !_st_pool[id]) return NULL;
+#ifdef _WIN32
+    WaitForSingleObject(_st_pool[id], INFINITE); CloseHandle(_st_pool[id]);
+#else
+    pthread_join(_st_pool[id], NULL);
+#endif
+    _st_pool[id] = 0; return _st_results[id];
+}
+
+static inline void secondsleep(float s) { 
+#ifdef _WIN32
+    Sleep((int)(s * 1000));
+#else
+    usleep((int)(s * 1000000));
+#endif
+}
+
+static inline void killthread(int id) {
+    if (id >= 0 && id < MAX_THREADS && _st_pool[id]) {
+#ifdef _WIN32
+        TerminateThread(_st_pool[id], 0); CloseHandle(_st_pool[id]);
+#else
+        pthread_cancel(_st_pool[id]);
+#endif
+        _st_pool[id] = 0;
+    }
+}
+
+static inline void bombthreads() { for(int i=0; i<MAX_THREADS; i++) killthread(i); }
 
 #endif
 
