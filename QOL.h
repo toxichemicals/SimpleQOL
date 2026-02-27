@@ -7,8 +7,176 @@
 #endif\n
 
 /* Source: SimpleBUDP/simple_budp.h */
-#ifndef SIMPLE_BUDP_H
+#ifndef SIMPLE_BUDP_UNIFIED_H
+#ifndef SIMPLE_TYPES_H
 
+#include <stdint.h>
+#include <string.h>
+#include <stdio.h>
+
+// --- Base Types ---
+typedef uint8_t u8;   typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
+typedef int8_t s8;    typedef int16_t s16;  typedef int32_t s32;  typedef int64_t s64;
+
+// --- Structural Definitions ---
+#define DEF_STRUCTS(BITS, LIMBS) \
+    typedef struct { u32 limbs[LIMBS]; } suint##BITS; \
+    typedef struct { s32 limbs[LIMBS]; } sint##BITS; \
+    typedef struct { suint##BITS mantissa; s32 exponent; } sfloat##BITS;
+
+DEF_STRUCTS(32, 1)    DEF_STRUCTS(64, 2)    DEF_STRUCTS(128, 4)
+DEF_STRUCTS(256, 8)   DEF_STRUCTS(512, 16)  DEF_STRUCTS(1024, 32)
+DEF_STRUCTS(2048, 64) DEF_STRUCTS(4096, 128) DEF_STRUCTS(8192, 256)
+DEF_STRUCTS(12288, 384)
+
+// --- Internal Helpers ---
+static inline void _internal_raw_hex(u32* limbs, int count) {
+    printf("0x");
+    int started = 0;
+    for (int i = count - 1; i >= 0; i--) {
+        if (limbs[i] != 0 || started || i == 0) {
+            if (started) printf("%08X", limbs[i]);
+            else printf("%X", limbs[i]);
+            started = 1;
+        }
+    }
+}
+
+static inline void _internal_dec_ascii(u32* limbs, int count) {
+    u32 temp[count];
+    memcpy(temp, limbs, count * sizeof(u32));
+    char digits[5000]; 
+    int pos = 0, digit_count = 0;
+    while (1) {
+        u64 remainder = 0;
+        int all_zero = 1;
+        for (int i = count - 1; i >= 0; i--) {
+            u64 val = temp[i] + (remainder << 32);
+            temp[i] = (u32)(val / 10);
+            remainder = val % 10;
+            if (temp[i] > 0) all_zero = 0;
+        }
+        if (digit_count > 0 && digit_count % 3 == 0) digits[pos++] = ',';
+        digits[pos++] = (char)('0' + remainder);
+        digit_count++;
+        if (all_zero) break;
+    }
+    for (int i = pos - 1; i >= 0; i--) putchar(digits[i]);
+}
+
+// --- Shift Operations ---
+#define DEF_SHIFT(BITS, COUNT) \
+    static inline void suint##BITS##_shl(suint##BITS *v, int shift) { \
+        if (shift <= 0) return; \
+        int limb_shift = shift / 32; \
+        int bit_shift = shift % 32; \
+        if (limb_shift >= COUNT) { memset(v->limbs, 0, sizeof(v->limbs)); return; } \
+        for (int i = COUNT - 1; i >= 0; i--) { \
+            if (i >= limb_shift) { \
+                v->limbs[i] = v->limbs[i - limb_shift] << bit_shift; \
+                if (bit_shift > 0 && i - limb_shift - 1 >= 0) \
+                    v->limbs[i] |= v->limbs[i - limb_shift - 1] >> (32 - bit_shift); \
+            } else v->limbs[i] = 0; \
+        } \
+    }
+
+DEF_SHIFT(32, 1)    DEF_SHIFT(64, 2)    DEF_SHIFT(128, 4)
+DEF_SHIFT(256, 8)   DEF_SHIFT(512, 16)  DEF_SHIFT(1024, 32)
+DEF_SHIFT(2048, 64) DEF_SHIFT(4096, 128) DEF_SHIFT(8192, 256)
+DEF_SHIFT(12288, 384)
+
+// --- Printers ---
+#define DEF_PRINTERS(BITS, COUNT) \
+    static inline void _nf_u##BITS(suint##BITS v) { _internal_raw_hex(v.limbs, COUNT); } \
+    static inline void _f_u##BITS(suint##BITS v)  { _internal_dec_ascii(v.limbs, COUNT); } \
+    static inline void _nf_s##BITS(sint##BITS v)  { printf("(S)"); _internal_raw_hex((u32*)v.limbs, COUNT); } \
+    static inline void _f_s##BITS(sint##BITS v)   { if(v.limbs[COUNT-1] < 0) printf("-"); _internal_dec_ascii((u32*)v.limbs, COUNT); } \
+    static inline void _nf_flt##BITS(sfloat##BITS v) { _internal_raw_hex(v.mantissa.limbs, COUNT); printf(" E%d", v.exponent); } \
+    static inline void _f_flt##BITS(sfloat##BITS v)  { _internal_dec_ascii(v.mantissa.limbs, COUNT); printf(" * 2^%d", v.exponent); }
+
+DEF_PRINTERS(32, 1)    DEF_PRINTERS(64, 2)    DEF_PRINTERS(128, 4)
+DEF_PRINTERS(256, 8)   DEF_PRINTERS(512, 16)  DEF_PRINTERS(1024, 32)
+DEF_PRINTERS(2048, 64) DEF_PRINTERS(4096, 128) DEF_PRINTERS(8192, 256)
+DEF_PRINTERS(12288, 384)
+
+#define slibnfprint(val) _Generic((val), \
+    suint32: _nf_u32, suint64: _nf_u64, suint128: _nf_u128, suint256: _nf_u256, suint512: _nf_u512, \
+    suint1024: _nf_u1024, suint2048: _nf_u2048, suint4096: _nf_u4096, suint8192: _nf_u8192, suint12288: _nf_u12288, \
+    sint32: _nf_s32, sint64: _nf_s64, sint128: _nf_s128, sint256: _nf_s256, sint512: _nf_s512, \
+    sint1024: _nf_s1024, sint2048: _nf_s2048, sint4096: _nf_s4096, sint8192: _nf_s8192, sint12288: _nf_s12288, \
+    sfloat32: _nf_flt32, sfloat64: _nf_flt64, sfloat128: _nf_flt128, sfloat256: _nf_flt256, sfloat512: _nf_flt512, \
+    sfloat1024: _nf_flt1024, sfloat2048: _nf_flt2048, sfloat4096: _nf_flt4096, sfloat8192: _nf_flt8192, sfloat12288: _nf_flt12288 \
+)(val)
+
+#define slibprint(val) _Generic((val), \
+    suint32: _f_u32, suint64: _f_u64, suint128: _f_u128, suint256: _f_u256, suint512: _f_u512, \
+    suint1024: _f_u1024, suint2048: _f_u2048, suint4096: _f_u4096, suint8192: _f_u8192, suint12288: _f_u12288, \
+    sint32: _f_s32, sint64: _f_s64, sint128: _f_s128, sint256: _f_s256, sint512: _f_s512, \
+    sint1024: _f_s1024, sint2048: _f_s2048, sint4096: _f_s4096, sint8192: _f_s8192, sint12288: _f_s12288, \
+    sfloat32: _f_flt32, sfloat64: _f_flt64, sfloat128: _f_flt128, sfloat256: _f_flt256, sfloat512: _f_flt512, \
+    sfloat1024: _f_flt1024, sfloat2048: _f_flt2048, sfloat4096: _f_flt4096, sfloat8192: _f_flt8192, sfloat12288: _f_flt12288 \
+)(val)
+// --- Addition ---
+#define DEF_ADD(BITS, COUNT) \
+    static inline u32 suint##BITS##_add(suint##BITS *res, suint##BITS a, suint##BITS b) { \
+        u64 carry = 0; \
+        for (int i = 0; i < COUNT; i++) { \
+            u64 sum = (u64)a.limbs[i] + b.limbs[i] + carry; \
+            res->limbs[i] = (u32)sum; \
+            carry = sum >> 32; \
+        } \
+        return (u32)carry; \
+    }
+
+// --- Multiplication ---
+#define DEF_MUL(BITS, COUNT) \
+    static inline void suint##BITS##_mul(suint##BITS *res, suint##BITS a, suint##BITS b) { \
+        suint##BITS out = {0}; \
+        for (int i = 0; i < COUNT; i++) { \
+            if (a.limbs[i] == 0) continue; \
+            u64 carry = 0; \
+            for (int j = 0; i + j < COUNT; j++) { \
+                u64 cur = out.limbs[i + j] + (u64)a.limbs[i] * b.limbs[j] + carry; \
+                out.limbs[i + j] = (u32)cur; \
+                carry = cur >> 32; \
+            } \
+        } \
+        *res = out; \
+    }
+
+DEF_ADD(12288, 384)
+DEF_MUL(12288, 384)
+// Power function: res = base ^ exp
+static inline void suint12288_pow(suint12288 *res, u32 base_val, u32 exp) {
+    suint12288 b = {0}; b.limbs[0] = base_val;
+    suint12288 result = {0}; result.limbs[0] = 1;
+    
+    for (u32 i = 0; i < exp; i++) {
+        suint12288_mul(&result, result, b);
+    }
+    *res = result;
+}
+
+// Tetration: base ^^ height
+static inline void suint12288_tetrate(suint12288 *res, u32 base, u32 height) {
+    if (height == 0) { res->limbs[0] = 1; return; }
+    if (height == 1) { res->limbs[0] = base; return; }
+    
+    // Starting with base^^2
+    suint12288 current_val;
+    suint12288_pow(&current_val, base, base);
+    
+    for (u32 i = 2; i < height; i++) {
+        // This is the "Horrid" part. We use the previous result 
+        // as the exponent for the next layer.
+        // NOTE: We only take the first limb as the exponent here 
+        // because suint12288_pow expects a u32 exponent.
+        suint12288_pow(&current_val, base, current_val.limbs[0]);
+    }
+    *res = current_val;
+}
+#endif
+DEF_MUL(256, 8)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,177 +188,81 @@
     #define _WIN32_WINNT 0x0600
     #include <winsock2.h>
     #include <ws2tcpip.h>
-    #include <direct.h>
-    #pragma comment(lib, "ws2_32.lib")
+    #include <windows.h>
     typedef SOCKET net_fd;
-    #define b_sleep(ms) Sleep(ms)
-    #define b_mkdir(path) _mkdir(path)
+    #define b_sleep(s) Sleep((s) * 1000)
 #else
     #include <unistd.h>
     #include <arpa/inet.h>
     #include <sys/socket.h>
     #include <fcntl.h>
     #include <netdb.h>
-    #include <sys/time.h>
-    #include <pwd.h>
     typedef int net_fd;
-    #define net_close close
-    #define b_sleep(ms) usleep(ms * 1000)
-    #define b_mkdir(path) mkdir(path, 0700)
+    #define b_sleep(s) sleep(s)
 #endif
 
 #define MAX_B_BUF 65536
-#define B_SEP "::"
+#define SLICE_SIZE 1000
 #define MAX_B_SESSIONS 150
-#define DH_G 5
-#define DH_P 4294967291ULL
 
 typedef enum { B_IDLE, B_CONNECTING, B_READY, B_DEAD } BudpState;
+
+#pragma pack(push, 1)
+typedef struct {
+    uint32_t seq;
+    uint16_t slice_idx;
+    uint16_t slice_total;
+    uint32_t checksum;
+    uint32_t data_len;
+    char data[SLICE_SIZE];
+} BudpPacket;
+#pragma pack(pop)
 
 typedef struct {
     net_fd fd;
     BudpState state;
-    uint32_t seq_out;
     struct sockaddr_in remote_addr;
-    char remote_ip[64];
     int is_server;
-    
-    int enc_supported;   
-    int client_wants_e;  
-    int force_e;         
-    int force_noe;       
-    int crypto_active;   
-
-    uint64_t my_priv_id;      
-    uint64_t session_priv;    
-    uint64_t shared_secret;
-    uint64_t expected_remote_pub; 
-
-    long long last_rx_time, last_hb_tx;
+    int enc_requested;
+    int enc_forced;
+    suint256 my_priv_id;      
+    suint256 shared_secret;
+    uint32_t seq_out;
+    uint32_t seq_in_expected;
+    char assembly_buf[MAX_B_BUF];
     int hb_enabled;
-
-    char session_buf[MAX_B_BUF]; 
 } BudpSession;
 
 static BudpSession* _b_sessions = NULL;
 
-/* --- Persistence Utilities --- */
-static void _b_get_base_path(char* out, const char* seed) {
-#ifdef _WIN32
-    sprintf(out, "%s\\BUDP\\%llu", getenv("APPDATA"), (unsigned long long)5381); // Simple hash for path
-#else
-    struct passwd *pw = getpwuid(getuid());
-    sprintf(out, "%s/.local/BUDP/%s", pw->pw_dir, seed);
-#endif
-}
-
-static uint64_t _b_check_pinned_server(const char* seed, const char* ip, uint64_t incoming_id) {
-    char path[512], filepath[1024];
-    _b_get_base_path(path, seed);
-    
-    // Recursive mkdir for deep paths
-    char tmp[512];
-    snprintf(tmp, sizeof(tmp), "%s", path);
-    for(char *p = tmp + 1; *p; p++) if(*p == '/') { *p = 0; b_mkdir(tmp); *p = '/'; }
-    b_mkdir(tmp);
-
-    sprintf(filepath, "%s/%s.bin", path, ip);
-    
-    uint64_t pinned_id = 0;
-    FILE* f = fopen(filepath, "rb");
-    if (f) {
-        fread(&pinned_id, sizeof(pinned_id), 1, f);
-        fclose(f);
-        return pinned_id; // Return existing ID for comparison
-    } else {
-        f = fopen(filepath, "wb");
-        if (f) {
-            fwrite(&incoming_id, sizeof(incoming_id), 1, f);
-            fclose(f);
-        }
-        return incoming_id; // First time, so it's "pinned" now
+static uint32_t _b_crc32(const void* data, size_t n_bytes) {
+    uint32_t crc = 0xFFFFFFFF;
+    const uint8_t* p = (const uint8_t*)data;
+    while (n_bytes--) {
+        crc ^= *p++;
+        for (int i = 0; i < 8; i++)
+            crc = (crc >> 1) ^ (0xEDB88320 & (-(crc & 1)));
     }
+    return ~crc;
 }
 
-/* --- Math & Crypto --- */
-static uint64_t _b_hash(const char* str) {
-    uint64_t hash = 5381; int c;
-    while ((c = *str++)) hash = ((hash << 5) + hash) + c;
-    return hash;
-}
-
-static uint64_t _b_pow_mod(uint64_t base, uint64_t exp, uint64_t mod) {
-    uint64_t res = 1; base %= mod;
-    while (exp > 0) {
-        if (exp % 2 == 1) res = (__uint128_t)res * base % mod;
-        base = (__uint128_t)base * base % mod;
-        exp /= 2;
-    }
-    return res;
-}
-
-static inline uint16_t _b_checksum(const char* data) {
-    uint32_t sum = 0;
-    const uint16_t* ptr = (const uint16_t*)data;
-    int len = (int)strlen(data);
-    while (len > 1) { sum += *ptr++; len -= 2; }
-    if (len > 0) { sum += *(const uint8_t*)ptr; }
-    while (sum >> 16) { sum = (sum & 0xFFFF) + (sum >> 16); }
-    return (uint16_t)(~sum);
-}
-
-static inline void _b_crypt(int id, char* data, uint32_t seq) {
-    if (!_b_sessions[id].crypto_active || !_b_sessions[id].shared_secret) return;
-    uint64_t key = _b_sessions[id].shared_secret;
-    for (int i = 0; i < (int)strlen(data); i++) {
-        data[i] ^= ((key >> (i % 8)) & 0xFF) ^ (uint8_t)(seq & 0xFF);
-    }
-}
-
-static inline void _b_raw_send(int id, char* cmd, int force_plain) {
-    char pkt[MAX_B_BUF], temp[MAX_B_BUF];
-    strcpy(temp, cmd);
-    uint32_t this_seq = _b_sessions[id].seq_out++;
-    if (!force_plain) _b_crypt(id, temp, this_seq);
-    uint16_t ck = _b_checksum(temp);
-    sprintf(pkt, "%u%s%04X%s%s", this_seq, B_SEP, ck, B_SEP, temp);
-    sendto(_b_sessions[id].fd, pkt, (int)strlen(pkt), 0, (struct sockaddr*)&_b_sessions[id].remote_addr, sizeof(struct sockaddr_in));
-}
-
-/* --- Public API --- */
-static char _current_seed[128] = "default";
-
-static inline void binit(const char* identity_seed) {
+void binit(const char* seed) {
     if (_b_sessions) return;
 #ifdef _WIN32
     WSADATA wsa; WSAStartup(MAKEWORD(2, 2), &wsa);
 #endif
-    strncpy(_current_seed, identity_seed, 127);
     _b_sessions = (BudpSession*)calloc(MAX_B_SESSIONS, sizeof(BudpSession));
-    uint64_t my_id = _b_hash(identity_seed);
+    uint64_t h = 5381; int c; const char* s = seed;
+    while ((c = *s++)) h = ((h << 5) + h) + c;
     for(int i=0; i<MAX_B_SESSIONS; i++) {
+        _b_sessions[i].my_priv_id.limbs[0] = (uint32_t)h;
+        _b_sessions[i].my_priv_id.limbs[1] = (uint32_t)(h >> 32);
         _b_sessions[i].fd = -1;
-        _b_sessions[i].my_priv_id = my_id;
-        _b_sessions[i].enc_supported = 1; 
+        _b_sessions[i].state = B_IDLE;
     }
-    srand((unsigned int)time(NULL));
 }
 
-static inline void breset(int id) {
-    if (id < 0 || id >= MAX_B_SESSIONS) return;
-    _b_sessions[id].state = B_IDLE;
-    _b_sessions[id].crypto_active = 0;
-    _b_sessions[id].shared_secret = 0;
-}
-
-static inline void NoE(int id) { _b_sessions[id].enc_supported = 0; }
-static inline void UseE(int id) { _b_sessions[id].client_wants_e = 1; }
-static inline void bforceE(int id) { _b_sessions[id].force_e = 1; _b_sessions[id].enc_supported = 1; }
-static inline uint64_t bget_my_public_id(int id) { return _b_pow_mod(DH_G, _b_sessions[id].my_priv_id, DH_P); }
-static inline int bcconn(int id) { return (id >= 0 && _b_sessions[id].state == B_READY); }
-static inline void enableheartbeat(int id) { _b_sessions[id].hb_enabled = 1; }
-
-static inline int bopen(int id, int port) {
+int bopen(int id, int port) {
     net_fd fd = socket(AF_INET, SOCK_DGRAM, 0);
 #ifdef _WIN32
     unsigned long m = 1; ioctlsocket(fd, FIONBIO, &m);
@@ -202,119 +274,284 @@ static inline int bopen(int id, int port) {
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = INADDR_ANY;
     bind(fd, (struct sockaddr*)&addr, sizeof(addr));
+    
     _b_sessions[id].fd = fd;
     _b_sessions[id].is_server = (port != 0);
     _b_sessions[id].seq_out = 100;
+    _b_sessions[id].seq_in_expected = 0;
     return 1;
 }
 
-static inline void bconnect(int id, char* host, int port) {
-    struct hostent *he = gethostbyname(host);
+void bsend(int id, char* data) {
+    if (id < 0 || _b_sessions[id].fd == -1) return;
+    uint32_t len = strlen(data);
+    uint16_t total = (len / SLICE_SIZE) + 1;
+    uint32_t current_seq = _b_sessions[id].seq_out++;
+
+    for (uint16_t i = 0; i < total; i++) {
+        BudpPacket pkt = {0};
+        pkt.seq = current_seq;
+        pkt.slice_idx = i;
+        pkt.slice_total = total;
+        uint32_t off = i * SLICE_SIZE;
+        pkt.data_len = (len - off > SLICE_SIZE) ? SLICE_SIZE : (len - off);
+        memcpy(pkt.data, data + off, pkt.data_len);
+        pkt.checksum = _b_crc32(pkt.data, pkt.data_len);
+        
+        sendto(_b_sessions[id].fd, (char*)&pkt, sizeof(BudpPacket), 0, 
+               (struct sockaddr*)&_b_sessions[id].remote_addr, sizeof(struct sockaddr_in));
+    }
+}
+
+void bconnect(int id, const char* host, int port) {
+    struct hostent *hp = gethostbyname(host);
+    if (!hp) return;
     _b_sessions[id].remote_addr.sin_family = AF_INET;
     _b_sessions[id].remote_addr.sin_port = htons(port);
-    memcpy(&_b_sessions[id].remote_addr.sin_addr.s_addr, he->h_addr, he->h_length);
-    strncpy(_b_sessions[id].remote_ip, host, 63);
-    
+    memcpy(&_b_sessions[id].remote_addr.sin_addr, hp->h_addr_list[0], hp->h_length);
     _b_sessions[id].state = B_CONNECTING;
-    char msg[128]; sprintf(msg, "CONN::%llu", bget_my_public_id(id));
-    _b_raw_send(id, msg, 1);
+    bsend(id, "CONN");
 }
 
-static inline char* bupdate(int id) {
-    if (id < 0 || id >= MAX_B_SESSIONS || _b_sessions[id].fd == -1) return NULL;
-    struct timeval tv; gettimeofday(&tv, NULL);
-    long long now = (long long)tv.tv_sec * 1000 + (tv.tv_usec / 1000);
 
-    struct sockaddr_in src; socklen_t slen = sizeof(src);
-    int res = recvfrom(_b_sessions[id].fd, _b_sessions[id].session_buf, MAX_B_BUF-1, 0, (struct sockaddr*)&src, &slen);
-    if (res <= 0) {
-        if (bcconn(id) && _b_sessions[id].hb_enabled && (now - _b_sessions[id].last_rx_time > 10000)) {
-            _b_sessions[id].state = B_DEAD; return (char*)"DEAD";
+
+char* bupdate(int id) {
+    if (id < 0 || _b_sessions[id].fd == -1) return NULL;
+    
+    // Check multiple times to "drain" any packets that arrived during the 1s sleep
+    for (int i = 0; i < 50; i++) {
+        BudpPacket in;
+        struct sockaddr_in src;
+        socklen_t slen = sizeof(src);
+        int res = recvfrom(_b_sessions[id].fd, (char*)&in, sizeof(BudpPacket), 0, (struct sockaddr*)&src, &slen);
+        
+        if (res < (int)sizeof(BudpPacket)) return NULL;
+        if (_b_crc32(in.data, in.data_len) != in.checksum) continue;
+
+        // Auto-sync sequence if we are just starting
+        if (_b_sessions[id].state == B_IDLE || _b_sessions[id].state == B_CONNECTING) {
+            _b_sessions[id].seq_in_expected = in.seq;
         }
-        return NULL;
-    }
-    _b_sessions[id].session_buf[res] = 0;
 
-    char* s1 = strstr(_b_sessions[id].session_buf, B_SEP); if(!s1) return NULL;
-    uint32_t rx_seq = (uint32_t)atoi(_b_sessions[id].session_buf);
-    char* s2 = strstr(s1 + 2, B_SEP); if(!s2) return NULL;
-    char* cmd = s2 + 2;
-
-    if ((uint16_t)strtol(s1 + 2, NULL, 16) != _b_checksum(cmd)) return NULL;
-    if (_b_sessions[id].crypto_active) _b_crypt(id, cmd, rx_seq);
-    _b_sessions[id].last_rx_time = now;
-
-    if (_b_sessions[id].is_server) {
-        if (strncmp(cmd, "CONN::", 6) == 0) {
-            _b_sessions[id].remote_addr = src;
-            char resp[128]; sprintf(resp, "AUTH::%llu::%s", bget_my_public_id(id), _b_sessions[id].enc_supported ? "ES" : "NoE");
-            _b_raw_send(id, resp, 1);
-            return NULL;
-        }
-        if (strncmp(cmd, "ConnE::", 7) == 0) {
-            _b_sessions[id].session_priv = (rand() % 0xFFFF) + 2;
-            _b_sessions[id].shared_secret = _b_pow_mod(strtoull(cmd + 7, NULL, 10), _b_sessions[id].session_priv, DH_P);
-            _b_sessions[id].crypto_active = 1;
-            char resp[128]; sprintf(resp, "ACCEPTED_E::%llu", _b_pow_mod(DH_G, _b_sessions[id].session_priv, DH_P));
-            _b_raw_send(id, resp, 1);
-            _b_sessions[id].state = B_READY;
-            return (char*)"CONNECTED";
-        }
-    } else {
-        if (strncmp(cmd, "AUTH::", 6) == 0) {
-            uint64_t incoming_id = strtoull(cmd + 6, NULL, 10);
+        if (in.seq == _b_sessions[id].seq_in_expected) {
+            memcpy(_b_sessions[id].assembly_buf + (in.slice_idx * SLICE_SIZE), in.data, in.data_len);
             
-            // TOFU PINNING LOGIC
-            uint64_t pinned = _b_check_pinned_server(_current_seed, _b_sessions[id].remote_ip, incoming_id);
-            if (pinned != incoming_id) {
-                _b_sessions[id].state = B_DEAD;
-                return (char*)"LOCAL_ERROR: MITM DETECTED! Server ID mismatch.";
-            }
+            if (in.slice_idx == in.slice_total - 1) {
+                _b_sessions[id].assembly_buf[in.slice_idx * SLICE_SIZE + in.data_len] = 0;
+                _b_sessions[id].seq_in_expected++;
 
-            char* mode = strstr(cmd + 6, "::") + 2;
-            if (strcmp(mode, "ES") == 0 && _b_sessions[id].client_wants_e) {
-                _b_sessions[id].session_priv = (rand() % 0xFFFF) + 2;
-                char resp[128]; sprintf(resp, "ConnE::%llu", _b_pow_mod(DH_G, _b_sessions[id].session_priv, DH_P));
-                _b_raw_send(id, resp, 1);
-            } else {
-                if (_b_sessions[id].force_e) { _b_sessions[id].state = B_DEAD; return (char*)"LOCAL_ERROR: E Required."; }
-                _b_raw_send(id, "ConnNoE", 1);
+                if (strcmp(_b_sessions[id].assembly_buf, "CONN") == 0 && _b_sessions[id].is_server) {
+                    _b_sessions[id].remote_addr = src; // Capture the client's actual return address
+                    _b_sessions[id].state = B_READY;
+                    bsend(id, "CONNECTED");
+                    return (char*)"CONNECTED";
+                }
+                
+                if (strcmp(_b_sessions[id].assembly_buf, "CONNECTED") == 0) {
+                    _b_sessions[id].state = B_READY;
+                    return (char*)"CONNECTED";
+                }
+                
+                return _b_sessions[id].assembly_buf;
             }
-            return NULL;
-        }
-        if (strncmp(cmd, "ACCEPTED_E::", 12) == 0) {
-            _b_sessions[id].shared_secret = _b_pow_mod(strtoull(cmd + 12, NULL, 10), _b_sessions[id].session_priv, DH_P);
-            _b_sessions[id].crypto_active = 1;
-            _b_sessions[id].state = B_READY;
-            return (char*)"CONNECTED";
         }
     }
-    return cmd;
-}
-// Add this to your header
-static inline void bclose(int id) {
-    if (id < 0 || id >= MAX_B_SESSIONS || _b_sessions[id].fd == -1) return;
-    #ifdef _WIN32
-        closesocket(_b_sessions[id].fd);
-    #else
-        close(_b_sessions[id].fd);
-    #endif
-    _b_sessions[id].fd = -1;
-    _b_sessions[id].state = B_IDLE;
-    _b_sessions[id].crypto_active = 0;
-    _b_sessions[id].shared_secret = 0;
+    return NULL;
 }
 
-// Add this to allow changing seeds/keys mid-run
-static inline void brekey(int id, const char* new_seed) {
-    _b_sessions[id].my_priv_id = _b_hash(new_seed);
-    _b_sessions[id].crypto_active = 0; // Drop current encryption
-    _b_sessions[id].shared_secret = 0;
-    _b_sessions[id].state = B_IDLE;
+uint64_t bget_my_public_id(int id) {
+    return (uint64_t)_b_sessions[id].my_priv_id.limbs[0] | ((uint64_t)_b_sessions[id].my_priv_id.limbs[1] << 32);
 }
-static inline void bsend(int id, char* data) { if (bcconn(id)) _b_raw_send(id, data, 0); }
 
+void UseE(int id) { _b_sessions[id].enc_requested = 1; }
+void NoE(int id) { _b_sessions[id].enc_requested = 0; }
+void bforceE(int id) { _b_sessions[id].enc_forced = 1; }
+void enableheartbeat(int id) { _b_sessions[id].hb_enabled = 1; }
+int bcconn(int id) { return _b_sessions[id].state == B_READY; }
+void breset(int id) { _b_sessions[id].state = B_IDLE; _b_sessions[id].seq_in_expected = 0; }
+
+void bclose(int id) {
+    if (id < 0 || _b_sessions[id].fd == -1) return;
+#ifdef _WIN32
+    closesocket(_b_sessions[id].fd);
+#else
+    close(_b_sessions[id].fd);
 #endif
+    _b_sessions[id].fd = -1;
+}
+#endif // SIMPLE_BUDP_UNIFIED_H
+
+
+/* Source: SimpleBUDP/simple_types.h */
+#ifndef SIMPLE_TYPES_H
+
+#include <stdint.h>
+#include <string.h>
+#include <stdio.h>
+
+// --- Base Types ---
+typedef uint8_t u8;   typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
+typedef int8_t s8;    typedef int16_t s16;  typedef int32_t s32;  typedef int64_t s64;
+
+// --- Structural Definitions ---
+#define DEF_STRUCTS(BITS, LIMBS) \
+    typedef struct { u32 limbs[LIMBS]; } suint##BITS; \
+    typedef struct { s32 limbs[LIMBS]; } sint##BITS; \
+    typedef struct { suint##BITS mantissa; s32 exponent; } sfloat##BITS;
+
+DEF_STRUCTS(32, 1)    DEF_STRUCTS(64, 2)    DEF_STRUCTS(128, 4)
+DEF_STRUCTS(256, 8)   DEF_STRUCTS(512, 16)  DEF_STRUCTS(1024, 32)
+DEF_STRUCTS(2048, 64) DEF_STRUCTS(4096, 128) DEF_STRUCTS(8192, 256)
+DEF_STRUCTS(12288, 384)
+
+// --- Internal Helpers ---
+static inline void _internal_raw_hex(u32* limbs, int count) {
+    printf("0x");
+    int started = 0;
+    for (int i = count - 1; i >= 0; i--) {
+        if (limbs[i] != 0 || started || i == 0) {
+            if (started) printf("%08X", limbs[i]);
+            else printf("%X", limbs[i]);
+            started = 1;
+        }
+    }
+}
+
+static inline void _internal_dec_ascii(u32* limbs, int count) {
+    u32 temp[count];
+    memcpy(temp, limbs, count * sizeof(u32));
+    char digits[5000]; 
+    int pos = 0, digit_count = 0;
+    while (1) {
+        u64 remainder = 0;
+        int all_zero = 1;
+        for (int i = count - 1; i >= 0; i--) {
+            u64 val = temp[i] + (remainder << 32);
+            temp[i] = (u32)(val / 10);
+            remainder = val % 10;
+            if (temp[i] > 0) all_zero = 0;
+        }
+        if (digit_count > 0 && digit_count % 3 == 0) digits[pos++] = ',';
+        digits[pos++] = (char)('0' + remainder);
+        digit_count++;
+        if (all_zero) break;
+    }
+    for (int i = pos - 1; i >= 0; i--) putchar(digits[i]);
+}
+
+// --- Shift Operations ---
+#define DEF_SHIFT(BITS, COUNT) \
+    static inline void suint##BITS##_shl(suint##BITS *v, int shift) { \
+        if (shift <= 0) return; \
+        int limb_shift = shift / 32; \
+        int bit_shift = shift % 32; \
+        if (limb_shift >= COUNT) { memset(v->limbs, 0, sizeof(v->limbs)); return; } \
+        for (int i = COUNT - 1; i >= 0; i--) { \
+            if (i >= limb_shift) { \
+                v->limbs[i] = v->limbs[i - limb_shift] << bit_shift; \
+                if (bit_shift > 0 && i - limb_shift - 1 >= 0) \
+                    v->limbs[i] |= v->limbs[i - limb_shift - 1] >> (32 - bit_shift); \
+            } else v->limbs[i] = 0; \
+        } \
+    }
+
+DEF_SHIFT(32, 1)    DEF_SHIFT(64, 2)    DEF_SHIFT(128, 4)
+DEF_SHIFT(256, 8)   DEF_SHIFT(512, 16)  DEF_SHIFT(1024, 32)
+DEF_SHIFT(2048, 64) DEF_SHIFT(4096, 128) DEF_SHIFT(8192, 256)
+DEF_SHIFT(12288, 384)
+
+// --- Printers ---
+#define DEF_PRINTERS(BITS, COUNT) \
+    static inline void _nf_u##BITS(suint##BITS v) { _internal_raw_hex(v.limbs, COUNT); } \
+    static inline void _f_u##BITS(suint##BITS v)  { _internal_dec_ascii(v.limbs, COUNT); } \
+    static inline void _nf_s##BITS(sint##BITS v)  { printf("(S)"); _internal_raw_hex((u32*)v.limbs, COUNT); } \
+    static inline void _f_s##BITS(sint##BITS v)   { if(v.limbs[COUNT-1] < 0) printf("-"); _internal_dec_ascii((u32*)v.limbs, COUNT); } \
+    static inline void _nf_flt##BITS(sfloat##BITS v) { _internal_raw_hex(v.mantissa.limbs, COUNT); printf(" E%d", v.exponent); } \
+    static inline void _f_flt##BITS(sfloat##BITS v)  { _internal_dec_ascii(v.mantissa.limbs, COUNT); printf(" * 2^%d", v.exponent); }
+
+DEF_PRINTERS(32, 1)    DEF_PRINTERS(64, 2)    DEF_PRINTERS(128, 4)
+DEF_PRINTERS(256, 8)   DEF_PRINTERS(512, 16)  DEF_PRINTERS(1024, 32)
+DEF_PRINTERS(2048, 64) DEF_PRINTERS(4096, 128) DEF_PRINTERS(8192, 256)
+DEF_PRINTERS(12288, 384)
+
+#define slibnfprint(val) _Generic((val), \
+    suint32: _nf_u32, suint64: _nf_u64, suint128: _nf_u128, suint256: _nf_u256, suint512: _nf_u512, \
+    suint1024: _nf_u1024, suint2048: _nf_u2048, suint4096: _nf_u4096, suint8192: _nf_u8192, suint12288: _nf_u12288, \
+    sint32: _nf_s32, sint64: _nf_s64, sint128: _nf_s128, sint256: _nf_s256, sint512: _nf_s512, \
+    sint1024: _nf_s1024, sint2048: _nf_s2048, sint4096: _nf_s4096, sint8192: _nf_s8192, sint12288: _nf_s12288, \
+    sfloat32: _nf_flt32, sfloat64: _nf_flt64, sfloat128: _nf_flt128, sfloat256: _nf_flt256, sfloat512: _nf_flt512, \
+    sfloat1024: _nf_flt1024, sfloat2048: _nf_flt2048, sfloat4096: _nf_flt4096, sfloat8192: _nf_flt8192, sfloat12288: _nf_flt12288 \
+)(val)
+
+#define slibprint(val) _Generic((val), \
+    suint32: _f_u32, suint64: _f_u64, suint128: _f_u128, suint256: _f_u256, suint512: _f_u512, \
+    suint1024: _f_u1024, suint2048: _f_u2048, suint4096: _f_u4096, suint8192: _f_u8192, suint12288: _f_u12288, \
+    sint32: _f_s32, sint64: _f_s64, sint128: _f_s128, sint256: _f_s256, sint512: _f_s512, \
+    sint1024: _f_s1024, sint2048: _f_s2048, sint4096: _f_s4096, sint8192: _f_s8192, sint12288: _f_s12288, \
+    sfloat32: _f_flt32, sfloat64: _f_flt64, sfloat128: _f_flt128, sfloat256: _f_flt256, sfloat512: _f_flt512, \
+    sfloat1024: _f_flt1024, sfloat2048: _f_flt2048, sfloat4096: _f_flt4096, sfloat8192: _f_flt8192, sfloat12288: _f_flt12288 \
+)(val)
+// --- Addition ---
+#define DEF_ADD(BITS, COUNT) \
+    static inline u32 suint##BITS##_add(suint##BITS *res, suint##BITS a, suint##BITS b) { \
+        u64 carry = 0; \
+        for (int i = 0; i < COUNT; i++) { \
+            u64 sum = (u64)a.limbs[i] + b.limbs[i] + carry; \
+            res->limbs[i] = (u32)sum; \
+            carry = sum >> 32; \
+        } \
+        return (u32)carry; \
+    }
+
+// --- Multiplication ---
+#define DEF_MUL(BITS, COUNT) \
+    static inline void suint##BITS##_mul(suint##BITS *res, suint##BITS a, suint##BITS b) { \
+        suint##BITS out = {0}; \
+        for (int i = 0; i < COUNT; i++) { \
+            if (a.limbs[i] == 0) continue; \
+            u64 carry = 0; \
+            for (int j = 0; i + j < COUNT; j++) { \
+                u64 cur = out.limbs[i + j] + (u64)a.limbs[i] * b.limbs[j] + carry; \
+                out.limbs[i + j] = (u32)cur; \
+                carry = cur >> 32; \
+            } \
+        } \
+        *res = out; \
+    }
+
+DEF_ADD(12288, 384)
+DEF_MUL(12288, 384)
+// Power function: res = base ^ exp
+static inline void suint12288_pow(suint12288 *res, u32 base_val, u32 exp) {
+    suint12288 b = {0}; b.limbs[0] = base_val;
+    suint12288 result = {0}; result.limbs[0] = 1;
+    
+    for (u32 i = 0; i < exp; i++) {
+        suint12288_mul(&result, result, b);
+    }
+    *res = result;
+}
+
+// Tetration: base ^^ height
+static inline void suint12288_tetrate(suint12288 *res, u32 base, u32 height) {
+    if (height == 0) { res->limbs[0] = 1; return; }
+    if (height == 1) { res->limbs[0] = base; return; }
+    
+    // Starting with base^^2
+    suint12288 current_val;
+    suint12288_pow(&current_val, base, base);
+    
+    for (u32 i = 2; i < height; i++) {
+        // This is the "Horrid" part. We use the previous result 
+        // as the exponent for the next layer.
+        // NOTE: We only take the first limb as the exponent here 
+        // because suint12288_pow expects a u32 exponent.
+        suint12288_pow(&current_val, base, current_val.limbs[0]);
+    }
+    *res = current_val;
+}
+#endif
+
 
 /* Source: SimpleConflictsFixer/simple_conflicts_fixer.h */
 #ifndef SimpleConflictsFixer
@@ -1459,6 +1696,177 @@ static inline char* json_obj(const char* fmt, ...) {
     return res;
 }
 
+#endif
+
+
+/* Source: SimpleTypes/simple_types.h */
+#ifndef SIMPLE_TYPES_H
+
+#include <stdint.h>
+#include <string.h>
+#include <stdio.h>
+
+// --- Base Types ---
+typedef uint8_t u8;   typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
+typedef int8_t s8;    typedef int16_t s16;  typedef int32_t s32;  typedef int64_t s64;
+
+// --- Structural Definitions ---
+#define DEF_STRUCTS(BITS, LIMBS) \
+    typedef struct { u32 limbs[LIMBS]; } suint##BITS; \
+    typedef struct { s32 limbs[LIMBS]; } sint##BITS; \
+    typedef struct { suint##BITS mantissa; s32 exponent; } sfloat##BITS;
+
+DEF_STRUCTS(32, 1)    DEF_STRUCTS(64, 2)    DEF_STRUCTS(128, 4)
+DEF_STRUCTS(256, 8)   DEF_STRUCTS(512, 16)  DEF_STRUCTS(1024, 32)
+DEF_STRUCTS(2048, 64) DEF_STRUCTS(4096, 128) DEF_STRUCTS(8192, 256)
+DEF_STRUCTS(12288, 384)
+
+// --- Internal Helpers ---
+static inline void _internal_raw_hex(u32* limbs, int count) {
+    printf("0x");
+    int started = 0;
+    for (int i = count - 1; i >= 0; i--) {
+        if (limbs[i] != 0 || started || i == 0) {
+            if (started) printf("%08X", limbs[i]);
+            else printf("%X", limbs[i]);
+            started = 1;
+        }
+    }
+}
+
+static inline void _internal_dec_ascii(u32* limbs, int count) {
+    u32 temp[count];
+    memcpy(temp, limbs, count * sizeof(u32));
+    char digits[5000]; 
+    int pos = 0, digit_count = 0;
+    while (1) {
+        u64 remainder = 0;
+        int all_zero = 1;
+        for (int i = count - 1; i >= 0; i--) {
+            u64 val = temp[i] + (remainder << 32);
+            temp[i] = (u32)(val / 10);
+            remainder = val % 10;
+            if (temp[i] > 0) all_zero = 0;
+        }
+        if (digit_count > 0 && digit_count % 3 == 0) digits[pos++] = ',';
+        digits[pos++] = (char)('0' + remainder);
+        digit_count++;
+        if (all_zero) break;
+    }
+    for (int i = pos - 1; i >= 0; i--) putchar(digits[i]);
+}
+
+// --- Shift Operations ---
+#define DEF_SHIFT(BITS, COUNT) \
+    static inline void suint##BITS##_shl(suint##BITS *v, int shift) { \
+        if (shift <= 0) return; \
+        int limb_shift = shift / 32; \
+        int bit_shift = shift % 32; \
+        if (limb_shift >= COUNT) { memset(v->limbs, 0, sizeof(v->limbs)); return; } \
+        for (int i = COUNT - 1; i >= 0; i--) { \
+            if (i >= limb_shift) { \
+                v->limbs[i] = v->limbs[i - limb_shift] << bit_shift; \
+                if (bit_shift > 0 && i - limb_shift - 1 >= 0) \
+                    v->limbs[i] |= v->limbs[i - limb_shift - 1] >> (32 - bit_shift); \
+            } else v->limbs[i] = 0; \
+        } \
+    }
+
+DEF_SHIFT(32, 1)    DEF_SHIFT(64, 2)    DEF_SHIFT(128, 4)
+DEF_SHIFT(256, 8)   DEF_SHIFT(512, 16)  DEF_SHIFT(1024, 32)
+DEF_SHIFT(2048, 64) DEF_SHIFT(4096, 128) DEF_SHIFT(8192, 256)
+DEF_SHIFT(12288, 384)
+
+// --- Printers ---
+#define DEF_PRINTERS(BITS, COUNT) \
+    static inline void _nf_u##BITS(suint##BITS v) { _internal_raw_hex(v.limbs, COUNT); } \
+    static inline void _f_u##BITS(suint##BITS v)  { _internal_dec_ascii(v.limbs, COUNT); } \
+    static inline void _nf_s##BITS(sint##BITS v)  { printf("(S)"); _internal_raw_hex((u32*)v.limbs, COUNT); } \
+    static inline void _f_s##BITS(sint##BITS v)   { if(v.limbs[COUNT-1] < 0) printf("-"); _internal_dec_ascii((u32*)v.limbs, COUNT); } \
+    static inline void _nf_flt##BITS(sfloat##BITS v) { _internal_raw_hex(v.mantissa.limbs, COUNT); printf(" E%d", v.exponent); } \
+    static inline void _f_flt##BITS(sfloat##BITS v)  { _internal_dec_ascii(v.mantissa.limbs, COUNT); printf(" * 2^%d", v.exponent); }
+
+DEF_PRINTERS(32, 1)    DEF_PRINTERS(64, 2)    DEF_PRINTERS(128, 4)
+DEF_PRINTERS(256, 8)   DEF_PRINTERS(512, 16)  DEF_PRINTERS(1024, 32)
+DEF_PRINTERS(2048, 64) DEF_PRINTERS(4096, 128) DEF_PRINTERS(8192, 256)
+DEF_PRINTERS(12288, 384)
+
+#define slibnfprint(val) _Generic((val), \
+    suint32: _nf_u32, suint64: _nf_u64, suint128: _nf_u128, suint256: _nf_u256, suint512: _nf_u512, \
+    suint1024: _nf_u1024, suint2048: _nf_u2048, suint4096: _nf_u4096, suint8192: _nf_u8192, suint12288: _nf_u12288, \
+    sint32: _nf_s32, sint64: _nf_s64, sint128: _nf_s128, sint256: _nf_s256, sint512: _nf_s512, \
+    sint1024: _nf_s1024, sint2048: _nf_s2048, sint4096: _nf_s4096, sint8192: _nf_s8192, sint12288: _nf_s12288, \
+    sfloat32: _nf_flt32, sfloat64: _nf_flt64, sfloat128: _nf_flt128, sfloat256: _nf_flt256, sfloat512: _nf_flt512, \
+    sfloat1024: _nf_flt1024, sfloat2048: _nf_flt2048, sfloat4096: _nf_flt4096, sfloat8192: _nf_flt8192, sfloat12288: _nf_flt12288 \
+)(val)
+
+#define slibprint(val) _Generic((val), \
+    suint32: _f_u32, suint64: _f_u64, suint128: _f_u128, suint256: _f_u256, suint512: _f_u512, \
+    suint1024: _f_u1024, suint2048: _f_u2048, suint4096: _f_u4096, suint8192: _f_u8192, suint12288: _f_u12288, \
+    sint32: _f_s32, sint64: _f_s64, sint128: _f_s128, sint256: _f_s256, sint512: _f_s512, \
+    sint1024: _f_s1024, sint2048: _f_s2048, sint4096: _f_s4096, sint8192: _f_s8192, sint12288: _f_s12288, \
+    sfloat32: _f_flt32, sfloat64: _f_flt64, sfloat128: _f_flt128, sfloat256: _f_flt256, sfloat512: _f_flt512, \
+    sfloat1024: _f_flt1024, sfloat2048: _f_flt2048, sfloat4096: _f_flt4096, sfloat8192: _f_flt8192, sfloat12288: _f_flt12288 \
+)(val)
+// --- Addition ---
+#define DEF_ADD(BITS, COUNT) \
+    static inline u32 suint##BITS##_add(suint##BITS *res, suint##BITS a, suint##BITS b) { \
+        u64 carry = 0; \
+        for (int i = 0; i < COUNT; i++) { \
+            u64 sum = (u64)a.limbs[i] + b.limbs[i] + carry; \
+            res->limbs[i] = (u32)sum; \
+            carry = sum >> 32; \
+        } \
+        return (u32)carry; \
+    }
+
+// --- Multiplication ---
+#define DEF_MUL(BITS, COUNT) \
+    static inline void suint##BITS##_mul(suint##BITS *res, suint##BITS a, suint##BITS b) { \
+        suint##BITS out = {0}; \
+        for (int i = 0; i < COUNT; i++) { \
+            if (a.limbs[i] == 0) continue; \
+            u64 carry = 0; \
+            for (int j = 0; i + j < COUNT; j++) { \
+                u64 cur = out.limbs[i + j] + (u64)a.limbs[i] * b.limbs[j] + carry; \
+                out.limbs[i + j] = (u32)cur; \
+                carry = cur >> 32; \
+            } \
+        } \
+        *res = out; \
+    }
+
+DEF_ADD(12288, 384)
+DEF_MUL(12288, 384)
+// Power function: res = base ^ exp
+static inline void suint12288_pow(suint12288 *res, u32 base_val, u32 exp) {
+    suint12288 b = {0}; b.limbs[0] = base_val;
+    suint12288 result = {0}; result.limbs[0] = 1;
+    
+    for (u32 i = 0; i < exp; i++) {
+        suint12288_mul(&result, result, b);
+    }
+    *res = result;
+}
+
+// Tetration: base ^^ height
+static inline void suint12288_tetrate(suint12288 *res, u32 base, u32 height) {
+    if (height == 0) { res->limbs[0] = 1; return; }
+    if (height == 1) { res->limbs[0] = base; return; }
+    
+    // Starting with base^^2
+    suint12288 current_val;
+    suint12288_pow(&current_val, base, base);
+    
+    for (u32 i = 2; i < height; i++) {
+        // This is the "Horrid" part. We use the previous result 
+        // as the exponent for the next layer.
+        // NOTE: We only take the first limb as the exponent here 
+        // because suint12288_pow expects a u32 exponent.
+        suint12288_pow(&current_val, base, current_val.limbs[0]);
+    }
+    *res = current_val;
+}
 #endif
 
 

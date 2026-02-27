@@ -21,20 +21,20 @@
 <div class='max-w-4xl mx-auto px-8 py-16'>
 <header class='mb-20 border-b border-slate-800 pb-10 text-center'>
 <h1 class='text-5xl font-extrabold text-white tracking-tighter mb-4'>QOL Library | Mark-Sideways</h1>
-<p class='text-slate-500 font-mono text-xs uppercase tracking-[0.3em]'>System Documentation // 2026-02-24</p>
+<p class='text-slate-500 font-mono text-xs uppercase tracking-[0.3em]'>System Documentation // 2026-02-27</p>
 </header>
 <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded font-bold my-8 inline-block uppercase tracking-widest text-xs">Module: SimpleBUDP</div>
 <h1 class="text-4xl font-black text-white mt-20 mb-8 text-center border-b border-slate-800 pb-4">Module: simple_budp.h</h1>
 <h2 class="text-2xl font-semibold text-sky-400 mt-12 mb-4">Secure UDP Communication Library</h2>
 <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded font-bold my-8 inline-block uppercase tracking-widest text-xs">Feature Overview</div>
-<p class="mb-6 leading-relaxed text-slate-300">The `simple_budp` library provides a high-level API for encrypted, identity-verified UDP networking. </p>
-<p class="mb-6 leading-relaxed text-slate-300">It handles the <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">BudpSession <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">lifecycle, including automated handshakes and identity pinning.</p>
-<p class="mb-6 leading-relaxed text-slate-300"><span class="text-orange-500 font-bold ml-1">->rarr;</span> This documentation covers only the public API functions intended for end-user implementation.</p>
+<p class="mb-6 leading-relaxed text-slate-300">The `simple_budp` library provides a high-level API for binary-safe, encrypted, and identity-verified UDP networking. </p>
+<p class="mb-6 leading-relaxed text-slate-300">It utilizes a slicing engine for large payloads (up to 64KB) and handles the <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">BudpSession <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">lifecycle, including automated handshakes, 256-bit Diffie-Hellman key exchange, and identity pinning.</p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="text-orange-500 font-bold ml-1">->rarr;</span> Binary Safety Note: Data is no longer restricted by null terminators. The library uses explicit length headers (data_len) to ensure 0x00 bytes do not truncate packets during transmission or reassembly.</p>
 <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded font-bold my-8 inline-block uppercase tracking-widest text-xs">Core Lifecycle Functions</div>
 <div class="mside-tree whitespace-pre">| Function Definitions</div>
 <div class="mside-tree whitespace-pre">|</div>
 <div class="mside-tree whitespace-pre">| -- > void binit(const char* identity_seed)</div>
-<div class="mside-tree whitespace-pre">|    | -- > Initializes the library and derives the local private identity from the <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">seed</code>.</div>
+<div class="mside-tree whitespace-pre">|    | -- > Initializes the library and derives 256-bit local identity limbs from the <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">seed</code>.</div>
 <div class="mside-tree whitespace-pre">|    |</div>
 <div class="mside-tree whitespace-pre">| -- > int bopen(int id, int port)</div>
 <div class="mside-tree whitespace-pre">|    | -- > Opens a socket for a specific session ID.</div>
@@ -44,13 +44,13 @@
 <div class="mside-tree whitespace-pre">|    | -- > Initiates a connection sequence to a remote <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">host <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">and <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">port</code>.</div>
 <div class="mside-tree whitespace-pre">|    |</div>
 <div class="mside-tree whitespace-pre">| -- > char* bupdate(int id)</div>
-<div class="mside-tree whitespace-pre">|    | -- > The heart of the library; must be called frequently in the main loop.</div>
+<div class="mside-tree whitespace-pre">|    | -- > The heart of the library; drains the socket and handles reassembly.</div>
 <div class="mside-tree whitespace-pre">|    | -- > Returns <span class="bg-yellow-400/10 text-yellow-200 px-1 underline decoration-yellow-500/50">"CONNECTED" <span class="bg-yellow-400/10 text-yellow-200 px-1 underline decoration-yellow-500/50">on successful handshake.</div>
 <div class="mside-tree whitespace-pre">|    | -- > Returns <span class="bg-yellow-400/10 text-yellow-200 px-1 underline decoration-yellow-500/50">"DEAD" <span class="bg-yellow-400/10 text-yellow-200 px-1 underline decoration-yellow-500/50">on heartbeat timeout.</div>
-<div class="mside-tree whitespace-pre">|    | -- > Returns <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">char* <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">payload when data is received.</div>
+<div class="mside-tree whitespace-pre">|    | -- > Returns <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">char* <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">payload when a full message (or slice) is ready.</div>
 <div class="mside-tree whitespace-pre">|    |</div>
 <div class="mside-tree whitespace-pre">| -- > void bsend(int id, char* data)</div>
-<div class="mside-tree whitespace-pre">|    | -- > Sends a string <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">data <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">to the connected peer using the current security mode.</div>
+<div class="mside-tree whitespace-pre">|    | -- > Slices and sends <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">data</code>. Now handles binary data safely via length-aware fragmentation.</div>
 <div class="mside-tree whitespace-pre">|    |</div>
 <div class="mside-tree whitespace-pre">| -- > void bclose(int id)</div>
 <div class="mside-tree whitespace-pre">|    | -- > Closes the network socket and wipes the session state.</div>
@@ -59,7 +59,7 @@
 <div class="mside-tree whitespace-pre">| Manual Overrides</div>
 <div class="mside-tree whitespace-pre">|</div>
 <div class="mside-tree whitespace-pre">| -- > void UseE(int id)</div>
-<div class="mside-tree whitespace-pre">|    | -- > Requests the use of encryption for the session.</div>
+<div class="mside-tree whitespace-pre">|    | -- > Requests the use of encryption (256-bit DH exchange).</div>
 <div class="mside-tree whitespace-pre">|    |</div>
 <div class="mside-tree whitespace-pre">| -- > void NoE(int id)</div>
 <div class="mside-tree whitespace-pre">|    | -- > Disables encryption for the session (Plaintext mode).</div>
@@ -79,7 +79,7 @@
 <div class="mside-tree whitespace-pre">| Identity Functions</div>
 <div class="mside-tree whitespace-pre">|</div>
 <div class="mside-tree whitespace-pre">| -- > uint64_t bget_my_public_id(int id)</div>
-<div class="mside-tree whitespace-pre">|    | -- > Returns the DH public key derived from your <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">identity_seed</code>.</div>
+<div class="mside-tree whitespace-pre">|    | -- > Returns the primary 64-bit component of your DH public key.</div>
 <div class="mside-tree whitespace-pre">|    |</div>
 <div class="mside-tree whitespace-pre">| -- > void breset(int id)</div>
 <div class="mside-tree whitespace-pre">|    | -- > Clears current session logic without closing the underlying socket.</div>
@@ -93,7 +93,7 @@
    while(running) {
        char* msg = bupdate(0);
        if(msg) printf("Recv: %s\n", msg);
-       b_sleep(1);
+       b_sleep(1); // Polling interval (adjustable)
    }
 </code></pre></div>
 <div class="bg-red-500/20 border border-red-500/50 text-red-400 px-6 py-4 rounded-lg font-black my-8 text-center uppercase tracking-widest italic">Warning!!</div>
@@ -413,6 +413,78 @@ str_trim(s);  // Removes whitespace
 // JSON Example
 char* j = json_obj("s:name, i:age, b:active", "Ted", 21, 1); 
 // Returns: {"name":"Ted", "age":21, "active":true}
+</code></pre></div>
+<hr class="my-20 border-slate-800"/>
+<div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded font-bold my-8 inline-block uppercase tracking-widest text-xs">Module: SimpleTypes</div>
+<h1 class="text-4xl font-black text-white mt-20 mb-8 text-center border-b border-slate-800 pb-4">Module: simple_types.h</h1>
+<h2 class="text-2xl font-semibold text-sky-400 mt-12 mb-4">Arbitrary Precision Arithmetic & Quality of Life Types</h2>
+<div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded font-bold my-8 inline-block uppercase tracking-widest text-xs">Feature Overview</div>
+<p class="mb-6 leading-relaxed text-slate-300">This header-only library provides fixed-size, stack-allocated large integer and floating-point structures. It leverages C11</code>_Generic<code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">for a unified printing interface and provides basic arithmetic operations for extreme-scale integers.</p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="text-orange-500 font-bold ml-1">->rarr;</span> Supports unsigned and signed integers from 32-bit up to 12,288-bit.</p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="text-orange-400 font-bold ml-2">-<span class="text-orange-500 font-bold ml-1">->rarr;</span>rdsh;</span> Built on "limbs" of</code>u32<code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">(32-bit segments).</p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="text-orange-400 font-bold ml-2">-<span class="text-orange-500 font-bold ml-1">->rarr;</span>rdsh;</span> Includes basic support for large-mantissa floating point via <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">sfloat</code>.</p>
+<h1 class="text-4xl font-black text-white mt-20 mb-8 text-center border-b border-slate-800 pb-4">Type Definitions</h1>
+<h3 class="text-xl font-bold text-slate-200 mt-10 mb-2">Base Aliases</h3>
+<p class="mb-6 leading-relaxed text-slate-300">typedef uint8_t u8;   typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;</p>
+<p class="mb-6 leading-relaxed text-slate-300">typedef int8_t s8;    typedef int16_t s16;  typedef int32_t s32;  typedef int64_t s64;</p>
+<h3 class="text-xl font-bold text-slate-200 mt-10 mb-2">Large Structures</h3>
+<p class="mb-6 leading-relaxed text-slate-300">Generated via the</code>DEF_STRUCTS(BITS, LIMBS)<code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">macro:</p>
+<div class="mside-tree whitespace-pre">| -- > suintBITS: struct { u32 limbs[LIMBS]; }</div>
+<div class="mside-tree whitespace-pre">| -- > sintBITS: struct { s32 limbs[LIMBS]; }</div>
+<div class="mside-tree whitespace-pre">| -- > sfloatBITS: struct { suintBITS mantissa; s32 exponent; }</div>
+<h2 class="text-2xl font-semibold text-sky-400 mt-12 mb-4">Bit-Width Options</h2>
+<p class="mb-6 leading-relaxed text-slate-300">Pre-defined via DEF_STRUCTS for:</p>
+<p class="mb-6 leading-relaxed text-slate-300">% 32 (1 limb), 64 (2 limbs), 128 (4 limbs), 256 (8 limbs), 512 (16 limbs), 1024 (32 limbs), 2048 (64 limbs), 4096 (128 limbs), 8192 (256 limbs), 12288 (384 limbs) %</p>
+<div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded font-bold my-8 inline-block uppercase tracking-widest text-xs">Core Functions</div>
+<h2 class="text-2xl font-semibold text-sky-400 mt-12 mb-4">Printing & Output</h2>
+<p class="mb-6 leading-relaxed text-slate-300">The library uses <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">slibprint <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">and <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">slibnfprint <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">via C11 _Generic selection.</p>
+<div class="mside-tree whitespace-pre">| Output Styles</div>
+<div class="mside-tree whitespace-pre">| -- > <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">slibprint(val)</code>: Formatted decimal output.</div>
+<div class="mside-tree whitespace-pre">|    | -- > Calls _internal_dec_ascii.</div>
+<div class="mside-tree whitespace-pre">|    | -- > Signed types: Prints "-" if limbs[COUNT-1] < 0.</div>
+<div class="mside-tree whitespace-pre">|    | -- > Float types: Prints mantissa decimal then " * 2^exponent".</div>
+<div class="mside-tree whitespace-pre">|    | -- > Includes thousands separators (e.g., 1,000,000).</div>
+<div class="mside-tree whitespace-pre">| -- > <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">slibnfprint(val)</code>: "No-format" raw hex output.</div>
+<div class="mside-tree whitespace-pre">|    | -- > Calls _internal_raw_hex (prepends 0x).</div>
+<h2 class="text-2xl font-semibold text-sky-400 mt-12 mb-4">Arithmetic Operations</h2>
+<p class="mb-6 leading-relaxed text-slate-300">Focused on the 12288-bit (384 limb) implementations.</p>
+<div class="mside-tree whitespace-pre">| Operations</div>
+<div class="mside-tree whitespace-pre">| -- > <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">suint12288_add(res, a, b)</code>: </div>
+<div class="mside-tree whitespace-pre">|    | -- > sum = (u64)a.limbs[i] + b.limbs[i] + carry. Returns final u32 carry.</div>
+<div class="mside-tree whitespace-pre">| -- > <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">suint12288_mul(res, a, b)</code>: </div>
+<div class="mside-tree whitespace-pre">|    | -- > Full multiplication loop; skips if a.limbs[i] == 0.</div>
+<div class="mside-tree whitespace-pre">| -- > <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">suint12288_pow(res, base_val, exp)</code>: </div>
+<div class="mside-tree whitespace-pre">|    | -- > Iterative multiplication; takes u32 exp.</div>
+<div class="mside-tree whitespace-pre">| -- > <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">suint12288_tetrate(res, base, height)</code>: </div>
+<div class="mside-tree whitespace-pre">|    | -- > Uses suint12288_pow iteratively.</div>
+<p class="mb-6 leading-relaxed text-slate-300">$$High Priority$$</p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="underline decoration-slate-600">Note: suint12288_tetrate uses current_val.limbs[0] as the exponent for the next layer.</span></p>
+<p class="text-xs text-slate-500 mt-1 italic tracking-tight">This truncates the exponent to 32-bits during tetration.</p>
+<div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded font-bold my-8 inline-block uppercase tracking-widest text-xs">Logical Flow</div>
+<h2 class="text-2xl font-semibold text-sky-400 mt-12 mb-4">Bit Shifting</h2>
+<p class="mb-6 leading-relaxed text-slate-300">Defined via</code>DEF_SHIFT(BITS, COUNT)<code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">macro.</p>
+<div class="mside-tree whitespace-pre">| Shift Mechanism</div>
+<div class="mside-tree whitespace-pre">| -- > If shift >= total bits: memset 0 and return.</div>
+<div class="mside-tree whitespace-pre">| -- > Carry-over logic: v<span class="text-orange-500 font-bold ml-1">->rarr;</span>limbs[i] = v<span class="text-orange-500 font-bold ml-1">->rarr;</span>limbs[i - limb_shift] << bit_shift;</div>
+<div class="mside-tree whitespace-pre">| -- > v<span class="text-orange-500 font-bold ml-1">->rarr;</span>limbs[i] |= v<span class="text-orange-500 font-bold ml-1">->rarr;</span>limbs[i - limb_shift - 1] >> (32 - bit_shift);</div>
+<p class="mb-6 leading-relaxed text-slate-300">$$$Critical Warning$$$</p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="bg-yellow-400/10 text-yellow-200 px-1 underline decoration-yellow-500/50">Shifting by a negative value or 0 returns immediately without modification.</span></p>
+<h2 class="text-2xl font-semibold text-sky-400 mt-12 mb-4">Internal Mechanics</h2>
+<p class="mb-6 leading-relaxed text-slate-300">% Memory: _internal_dec_ascii uses local u32 temp[count] and memcpy. %</p>
+<p class="mb-6 leading-relaxed text-slate-300">% Buffer: char digits[5000] used for division-by-10 result extraction. %</p>
+<h2 class="text-2xl font-semibold text-sky-400 mt-12 mb-4">Example Usage</h2>
+<div class="mside-code rounded-xl p-6 my-8 text-sm text-sky-300 shadow-2xl"><pre><code>
+    // 1. Declare and Initialize to Zero
+    suint12288 big_val; 
+    memset(&amp;big_val, 0, sizeof(big_val));
+
+    // 2. Assign and Manipulate
+    big_val.limbs[0] = 1;
+    suint12288_shl(&amp;big_val, 12000); // 2^12000
+
+    // 3. Print Results
+    printf("Decimal Value: ");
+    slibprint(big_val); 
 </code></pre></div>
 <hr class="my-20 border-slate-800"/>
 </div><footer class='mt-32 border-t border-slate-900 p-16 text-center text-slate-600 text-[10px] tracking-[0.5em] uppercase'>

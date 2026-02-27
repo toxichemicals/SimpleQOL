@@ -1,0 +1,87 @@
+# Module: simple_types.h
+## Arbitrary Precision Arithmetic & Quality of Life Types
+
+@@@ Feature Overview @@@
+This header-only library provides fixed-size, stack-allocated large integer and floating-point structures. It leverages C11 $_Generic$ for a unified printing interface and provides basic arithmetic operations for extreme-scale integers.
+
+-> Supports unsigned and signed integers from 32-bit up to 12,288-bit.
+--> Built on "limbs" of $u32$ (32-bit segments).
+--> Includes basic support for large-mantissa floating point via $ sfloat $.
+
+# Type Definitions
+### Base Aliases
+typedef uint8_t u8;   typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
+typedef int8_t s8;    typedef int16_t s16;  typedef int32_t s32;  typedef int64_t s64;
+
+### Large Structures
+Generated via the $DEF_STRUCTS(BITS, LIMBS)$ macro:
+| -- > suintBITS: struct { u32 limbs[LIMBS]; }
+| -- > sintBITS: struct { s32 limbs[LIMBS]; }
+| -- > sfloatBITS: struct { suintBITS mantissa; s32 exponent; }
+
+## Bit-Width Options
+Pre-defined via DEF_STRUCTS for:
+% 32 (1 limb), 64 (2 limbs), 128 (4 limbs), 256 (8 limbs), 512 (16 limbs), 1024 (32 limbs), 2048 (64 limbs), 4096 (128 limbs), 8192 (256 limbs), 12288 (384 limbs) %
+
+@@@ Core Functions @@@
+
+## Printing & Output
+The library uses $ slibprint $ and $ slibnfprint $ via C11 _Generic selection.
+
+| Output Styles
+| -- > $ slibprint(val) $: Formatted decimal output.
+|    | -- > Calls _internal_dec_ascii.
+|    | -- > Signed types: Prints "-" if limbs[COUNT-1] < 0.
+|    | -- > Float types: Prints mantissa decimal then " * 2^exponent".
+|    | -- > Includes thousands separators (e.g., 1,000,000).
+| -- > $ slibnfprint(val) $: "No-format" raw hex output.
+|    | -- > Calls _internal_raw_hex (prepends 0x).
+
+## Arithmetic Operations
+Focused on the 12288-bit (384 limb) implementations.
+
+| Operations
+| -- > $ suint12288_add(res, a, b) $: 
+|    | -- > sum = (u64)a.limbs[i] + b.limbs[i] + carry. Returns final u32 carry.
+| -- > $ suint12288_mul(res, a, b) $: 
+|    | -- > Full multiplication loop; skips if a.limbs[i] == 0.
+| -- > $ suint12288_pow(res, base_val, exp) $: 
+|    | -- > Iterative multiplication; takes u32 exp.
+| -- > $ suint12288_tetrate(res, base, height) $: 
+|    | -- > Uses suint12288_pow iteratively.
+
+$$High Priority$$
+\\ Note: suint12288_tetrate uses current_val.limbs[0] as the exponent for the next layer. \\
+^ This truncates the exponent to 32-bits during tetration. ^
+
+@@@ Logical Flow @@@
+
+## Bit Shifting
+Defined via $DEF_SHIFT(BITS, COUNT)$ macro.
+
+| Shift Mechanism
+| -- > If shift >= total bits: memset 0 and return.
+| -- > Carry-over logic: v->limbs[i] = v->limbs[i - limb_shift] << bit_shift;
+| -- > v->limbs[i] |= v->limbs[i - limb_shift - 1] >> (32 - bit_shift);
+
+$$$Critical Warning$$$
+&& Shifting by a negative value or 0 returns immediately without modification. &&
+
+## Internal Mechanics
+% Memory: _internal_dec_ascii uses local u32 temp[count] and memcpy. %
+% Buffer: char digits[5000] used for division-by-10 result extraction. %
+
+## Example Usage
+||
+    // 1. Declare and Initialize to Zero
+    suint12288 big_val; 
+    memset(&big_val, 0, sizeof(big_val));
+
+    // 2. Assign and Manipulate
+    big_val.limbs[0] = 1;
+    suint12288_shl(&big_val, 12000); // 2^12000
+
+    // 3. Print Results
+    printf("Decimal Value: ");
+    slibprint(big_val); 
+||

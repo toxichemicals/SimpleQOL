@@ -2,17 +2,17 @@
 ## Secure UDP Communication Library
 
 @@@ Feature Overview @@@
-The `simple_budp` library provides a high-level API for encrypted, identity-verified UDP networking. 
-It handles the $ BudpSession $ lifecycle, including automated handshakes and identity pinning.
+The `simple_budp` library provides a high-level API for binary-safe, encrypted, and identity-verified UDP networking. 
+It utilizes a slicing engine for large payloads (up to 64KB) and handles the $ BudpSession $ lifecycle, including automated handshakes, 256-bit Diffie-Hellman key exchange, and identity pinning.
 
--> This documentation covers only the public API functions intended for end-user implementation.
+-> Binary Safety Note: Data is no longer restricted by null terminators. The library uses explicit length headers (data_len) to ensure 0x00 bytes do not truncate packets during transmission or reassembly.
 
 @@@ Core Lifecycle Functions @@@
 
 | Function Definitions
 |
 | -- > void binit(const char* identity_seed)
-|    | -- > Initializes the library and derives the local private identity from the $ seed $.
+|    | -- > Initializes the library and derives 256-bit local identity limbs from the $ seed $.
 |    |
 | -- > int bopen(int id, int port)
 |    | -- > Opens a socket for a specific session ID.
@@ -22,13 +22,13 @@ It handles the $ BudpSession $ lifecycle, including automated handshakes and ide
 |    | -- > Initiates a connection sequence to a remote $ host $ and $ port $.
 |    |
 | -- > char* bupdate(int id)
-|    | -- > The heart of the library; must be called frequently in the main loop.
+|    | -- > The heart of the library; drains the socket and handles reassembly.
 |    | -- > Returns && "CONNECTED" && on successful handshake.
 |    | -- > Returns && "DEAD" && on heartbeat timeout.
-|    | -- > Returns $ char* $ payload when data is received.
+|    | -- > Returns $ char* $ payload when a full message (or slice) is ready.
 |    |
 | -- > void bsend(int id, char* data)
-|    | -- > Sends a string $ data $ to the connected peer using the current security mode.
+|    | -- > Slices and sends $ data $. Now handles binary data safely via length-aware fragmentation.
 |    |
 | -- > void bclose(int id)
 |    | -- > Closes the network socket and wipes the session state.
@@ -39,7 +39,7 @@ It handles the $ BudpSession $ lifecycle, including automated handshakes and ide
 | Manual Overrides
 |
 | -- > void UseE(int id)
-|    | -- > Requests the use of encryption for the session.
+|    | -- > Requests the use of encryption (256-bit DH exchange).
 |    |
 | -- > void NoE(int id)
 |    | -- > Disables encryption for the session (Plaintext mode).
@@ -61,7 +61,7 @@ $$ High Priority $$
 | Identity Functions
 |
 | -- > uint64_t bget_my_public_id(int id)
-|    | -- > Returns the DH public key derived from your $ identity_seed $.
+|    | -- > Returns the primary 64-bit component of your DH public key.
 |    |
 | -- > void breset(int id)
 |    | -- > Clears current session logic without closing the underlying socket.
@@ -76,7 +76,7 @@ $$ High Priority $$
    while(running) {
        char* msg = bupdate(0);
        if(msg) printf("Recv: %s\n", msg);
-       b_sleep(1);
+       b_sleep(1); // Polling interval (adjustable)
    }
 ||
 
