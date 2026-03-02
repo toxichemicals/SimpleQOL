@@ -160,7 +160,9 @@ It abstracts away the differences between Windows and POSIX path separators to e
 | -- > $ fs_append(filename, data) $ | Appends string data to the end of a file.
 | -- > $ fs_delete(filename) $ | Removes a file from the system.
 | -- > $ fs_exists(filename) $ | Returns 1 if the file can be opened for reading.
-
+| -- > $ fs_mkdir(dirname) $ | Creates a directory. Returns 1 for success; 0 for fail.
+| -- > $ fs_dirremove(dirname) $ | Removes a directory. Returns 1 for success; 0 for fail.
+| -- > $ fs_listdir(dirname) $ | Lists the contents of a directory. Returns a string fomratted like: "somedirectory:dir|somefile:file"
 ## Advanced Extraction
 && Note: String-based extraction assumes the data is null-terminated. &&
 
@@ -176,8 +178,8 @@ char* line2 = fs_getline(content, 2);
 // Remember to free(content)!
 ||
 
-$$ High Priority $$
-\\ Functions like $ fs_read $, $ fs_readto $, and $ fs_readamount $ allocate memory dynamically. You MUST call $ free() $ on the returned pointer to avoid memory leaks. \\
+$$ IMPORTANT! $$
+\\ Functions like $ fs_read $, $ fs_readto $, $ fs_readamount $, and $ fs_listdir $ allocate memory dynamically. You MUST call $ free() $ on the returned pointer to avoid memory leaks. \\
 
 
 ---
