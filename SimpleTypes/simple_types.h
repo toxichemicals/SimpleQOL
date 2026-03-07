@@ -76,6 +76,56 @@ DEF_SHIFT(256, 8)   DEF_SHIFT(512, 16)  DEF_SHIFT(1024, 32)
 DEF_SHIFT(2048, 64) DEF_SHIFT(4096, 128) DEF_SHIFT(8192, 256)
 DEF_SHIFT(12288, 384)
 
+// --- Modulo (Remainder) ---
+// This implements res = a % b using a limb-by-limb approach.
+// Note: This is a basic implementation. For high-performance 12288-bit 
+// division, one would typically use Knuth's Algorithm D.
+#define DEF_MOD(BITS, COUNT) \
+    static inline void suint##BITS##_mod(suint##BITS *res, suint##BITS a, suint##BITS b) { \
+        suint##BITS rem = {0}; \
+        /* Check for division by zero */ \
+        int is_zero = 1; \
+        for(int i = 0; i < COUNT; i++) if(b.limbs[i] != 0) is_zero = 0; \
+        if (is_zero) { *res = rem; return; } \
+        \
+        for (int i = BITS - 1; i >= 0; i--) { \
+            /* Shift remainder left by 1 */ \
+            u32 carry = 0; \
+            for (int j = 0; j < COUNT; j++) { \
+                u32 next_carry = rem.limbs[j] >> 31; \
+                rem.limbs[j] = (rem.limbs[j] << 1) | carry; \
+                carry = next_carry; \
+            } \
+            /* Bring down the next bit from 'a' */ \
+            int limb_idx = i / 32; \
+            int bit_idx = i % 32; \
+            if ((a.limbs[limb_idx] >> bit_idx) & 1) { \
+                rem.limbs[0] |= 1; \
+            } \
+            /* If rem >= b, then rem = rem - b */ \
+            int greater_equal = 1; \
+            for (int j = COUNT - 1; j >= 0; j--) { \
+                if (rem.limbs[j] < b.limbs[j]) { greater_equal = 0; break; } \
+                if (rem.limbs[j] > b.limbs[j]) { greater_equal = 1; break; } \
+            } \
+            if (greater_equal) { \
+                u64 borrow = 0; \
+                for (int j = 0; j < COUNT; j++) { \
+                    u64 sub = (u64)rem.limbs[j] - b.limbs[j] - borrow; \
+                    rem.limbs[j] = (u32)sub; \
+                    borrow = (sub >> 63) & 1; \
+                } \
+            } \
+        } \
+        *res = rem; \
+    }
+
+// Generate Modulo functions for all bit sizes
+DEF_MOD(32, 1)      DEF_MOD(64, 2)      DEF_MOD(128, 4)
+DEF_MOD(256, 8)     DEF_MOD(512, 16)    DEF_MOD(1024, 32)
+DEF_MOD(2048, 64)   DEF_MOD(4096, 128)  DEF_MOD(8192, 256)
+DEF_MOD(12288, 384)
+
 // --- Printers ---
 #define DEF_PRINTERS(BITS, COUNT) \
     static inline void _nf_u##BITS(suint##BITS v) { _internal_raw_hex(v.limbs, COUNT); } \
