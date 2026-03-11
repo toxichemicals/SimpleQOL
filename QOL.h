@@ -801,16 +801,30 @@ static inline ClientInfo getclientinfo(int id) {
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <stdarg.h>
 
 typedef struct {
-    int byte;          // Global offset in file
-    int lbyte;         // Offset relative to the start of the line (Column)
-    int line;          // Line number
-    char fullstr[256]; // Match: "spawn_player(hero);"
-    char str[256];     // Signature: "spawn_player()"
-    char con[256];     // Content: "hero"
+    int byte;
+    int lbyte;
+    int line;
+    char fullstr[256];
+    char str[256];
+    char con[256];
+    void* conparsed[64];
 } Parsed;
+
+/* --- Memory Cleanup --- */
+
+static inline void freeconparsed(Parsed* p) {
+    if (!p) return;
+    for (int i = 0; i < 64; i++) {
+        if (p->conparsed[i] != NULL) {
+            free(p->conparsed[i]);
+            p->conparsed[i] = NULL;
+        }
+    }
+}
 
 /* --- Internal Helpers --- */
 
@@ -840,7 +854,29 @@ static inline const char* _sp_find_line_start(const char* haystack, const char* 
     return p;
 }
 
-/* --- Core Logic --- */
+static inline void _sp_tokenize_content(Parsed* p) {
+    char temp[256];
+    strncpy(temp, p->con, 255);
+    char* saveptr;
+    char* token = strtok_r(temp, ",", &saveptr);
+    int i = 0;
+    while (token && i < 64) {
+        while (*token == ' ') token++;
+        if (*token == '"') {
+            char* end = strrchr(token, '"');
+            if (end) *end = '\0';
+            p->conparsed[i] = strdup(token + 1);
+        } else {
+            int* val = malloc(sizeof(int));
+            *val = atoi(token);
+            p->conparsed[i] = val;
+        }
+        token = strtok_r(NULL, ",", &saveptr);
+        i++;
+    }
+}
+
+/* --- Core Parsing Logic --- */
 
 static inline int parse(const char* haystack, const char* needle) {
     return (haystack && needle && strstr(haystack, needle) != NULL);
@@ -856,7 +892,7 @@ static inline int parseex(const char* input, const char* format, ...) {
 }
 
 static inline Parsed advparse(const char* haystack, const char* needle) {
-    Parsed p = { -1, -1, -1, {0}, {0}, {0} };
+    Parsed p = { -1, -1, -1, {0}, {0}, {0}, {0} };
     if (!haystack || !needle) return p;
     const char* pos = strstr(haystack, needle);
     if (pos) {
@@ -869,13 +905,12 @@ static inline Parsed advparse(const char* haystack, const char* needle) {
 }
 
 static inline Parsed parsecon(const char* haystack, const char* pattern) {
-    Parsed p = { -1, -1, -1, {0}, {0}, {0} };
+    Parsed p = { -1, -1, -1, {0}, {0}, {0}, {0} };
     char fmt[256]; strncpy(fmt, pattern, 255);
     char* split = strstr(fmt, "%%");
     if (!split) return p;
     *split = '\0';
-    char* prefix = fmt; 
-    char* suffix = split + 2;
+    char* prefix = fmt; char* suffix = split + 2;
 
     const char* start_ptr = strstr(haystack, prefix);
     if (!start_ptr) return p;
@@ -897,6 +932,7 @@ static inline Parsed parsecon(const char* haystack, const char* pattern) {
     if (con_len > 255) con_len = 255;
     strncpy(p.con, val_start, con_len); p.con[con_len] = '\0';
 
+    _sp_tokenize_content(&p);
     return p;
 }
 
@@ -915,11 +951,29 @@ static inline int parseline(const char* haystack, int line_num, char* dest, int 
 }
 
 static inline Parsed parselineadv(const char* haystack, int line_num) {
-    Parsed p = { -1, 0, line_num, {0}, {0}, {0} };
-    const char* line_ptr = _sp_get_line_ptr(haystack, line_num);
-    if (line_ptr) {
-        p.byte = (int)(line_ptr - haystack);
-        parseline(haystack, line_num, p.fullstr, 256);
+    Parsed p = { -1, 0, line_num, {0}, {0}, {0}, {0} };
+    const char* line_start = _sp_get_line_ptr(haystack, line_num);
+    if (!line_start) return p;
+
+    p.byte = (int)(line_start - haystack);
+    parseline(haystack, line_num, p.fullstr, 256);
+
+    char *open_paren = strchr(p.fullstr, '(');
+    char *close_paren = strrchr(p.fullstr, ')');
+
+    if (open_paren && close_paren && close_paren > open_paren) {
+        int prefix_len = (int)(open_paren - p.fullstr);
+        strncpy(p.str, p.fullstr, prefix_len);
+        p.str[prefix_len] = '\0';
+        strcat(p.str, "()");
+        
+        int con_len = (int)(close_paren - (open_paren + 1));
+        if (con_len > 0) {
+            strncpy(p.con, open_paren + 1, (con_len > 255) ? 255 : con_len);
+            p.con[(con_len > 255) ? 255 : con_len] = '\0';
+            _sp_tokenize_content(&p);
+        }
+    } else {
         strncpy(p.str, p.fullstr, 255);
     }
     return p;

@@ -21,7 +21,7 @@
 <div class='max-w-4xl mx-auto px-8 py-16'>
 <header class='mb-20 border-b border-slate-800 pb-10 text-center'>
 <h1 class='text-5xl font-extrabold text-white tracking-tighter mb-4'>QOL Library | Mark-Sideways</h1>
-<p class='text-slate-500 font-mono text-xs uppercase tracking-[0.3em]'>System Documentation // 2026-03-07</p>
+<p class='text-slate-500 font-mono text-xs uppercase tracking-[0.3em]'>System Documentation // 2026-03-10</p>
 </header>
 <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded font-bold my-8 inline-block uppercase tracking-widest text-xs">Module: SimpleConflictsFixer</div>
 <h1 class="text-4xl font-black text-white mt-20 mb-8 text-center border-b border-slate-800 pb-4">SimpleConflictsFixer Documentation</h1>
@@ -187,43 +187,42 @@ while(1) {
 <h1 class="text-4xl font-black text-white mt-20 mb-8 text-center border-b border-slate-800 pb-4">SimpleParse Documentation</h1>
 <h2 class="text-2xl font-semibold text-sky-400 mt-12 mb-4">String Extraction and Signature Parsing Module</h2>
 <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded font-bold my-8 inline-block uppercase tracking-widest text-xs">Feature Overview</div>
-<p class="mb-6 leading-relaxed text-slate-300">`SimpleParse` is a specialized module for extracting data between markers and identifying function-like signatures within string buffers. It is designed for lightweight scripting or configuration parsing where a full regex engine is overkill.</p>
-<p class="mb-6 leading-relaxed text-slate-300"><span class="text-orange-500 font-bold ml-1">->rarr;</span> Context Aware: Returns a <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">Parsed <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">struct containing global offsets, line numbers, and column positions.</p>
+<p class="mb-6 leading-relaxed text-slate-300">SimpleParse is a specialized module for extracting data between markers and identifying function-like signatures within string buffers. It is designed for lightweight scripting or configuration parsing where a full regex engine is overkill.</p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="text-orange-500 font-bold ml-1">->rarr;</span> Context Aware: Returns a Parsed struct containing global offsets, line numbers, and column positions.</p>
 <p class="mb-6 leading-relaxed text-slate-300"><span class="text-orange-400 font-bold ml-2">-<span class="text-orange-500 font-bold ml-1">->rarr;</span>rdsh;</span> Structural Parsing: Automatically separates a match into its "Full String", "Signature", and "Inner Content".</p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="text-orange-400 font-bold ml-2">-<span class="text-orange-500 font-bold ml-1">->rarr;</span>rdsh;</span> Tokenized Arguments: Automatically parses comma-separated arguments into a pointer array for direct access.</p>
 <div class="mside-tree whitespace-pre">| The Parsed Struct</div>
 <div class="mside-tree whitespace-pre">|</div>
-<div class="mside-tree whitespace-pre">| -- > <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">int byte <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">: Global byte offset in the file.</div>
-<div class="mside-tree whitespace-pre">| -- > <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">int lbyte <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">: Column offset relative to the start of the line.</div>
-<div class="mside-tree whitespace-pre">| -- > <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">int line <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">: Current line number.</div>
-<div class="mside-tree whitespace-pre">| -- > <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">char fullstr[256] <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">: The entire match (e.g., "spawn_player(hero);").</div>
-<div class="mside-tree whitespace-pre">| -- > <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">char str[256] <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">: The signature (e.g., "spawn_player()").</div>
-<div class="mside-tree whitespace-pre">| -- > <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">char con[256] <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">: The inner content (e.g., "hero").</div>
+<div class="mside-tree whitespace-pre">| -- > int byte : Global byte offset in the file.</div>
+<div class="mside-tree whitespace-pre">| -- > int lbyte : Column offset relative to the start of the line.</div>
+<div class="mside-tree whitespace-pre">| -- > int line : Current line number.</div>
+<div class="mside-tree whitespace-pre">| -- > char fullstr[256] : The entire match (e.g., "spawn_player(1, "hero");").</div>
+<div class="mside-tree whitespace-pre">| -- > char str[256] : The signature (e.g., "spawn_player()").</div>
+<div class="mside-tree whitespace-pre">| -- > char con[256] : The inner content (e.g., "1, "hero"").</div>
+<div class="mside-tree whitespace-pre">| -- > void* conparsed[64] : Array of pointers to parsed arguments.</div>
 <h2 class="text-2xl font-semibold text-sky-400 mt-12 mb-4">Core Extraction API</h2>
-<p class="mb-6 leading-relaxed text-slate-300">% Memory: These functions operate on existing string buffers and do not perform internal heap allocations. %</p>
+<p class="mb-6 leading-relaxed text-slate-300">% Memory: parselineadv performs heap allocations for arguments in conparsed. Use freeconparsed() to prevent memory leaks. %</p>
 <div class="mside-tree whitespace-pre">| Function | Description</div>
 <div class="mside-tree whitespace-pre">|</div>
-<div class="mside-tree whitespace-pre">| -- > <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">parsecon(haystack, prefix, suffix) <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">| Finds the first occurrence of data between a prefix and suffix.</div>
-<div class="mside-tree whitespace-pre">| -- > <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">parseconadv(haystack, prefix, suffix, skip) <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">| Same as above, but skips a specified number of matches.</div>
-<div class="mside-tree whitespace-pre">| -- > <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">parseline(haystack, line, dest, max) <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">| Extracts a specific line of text into a destination buffer.</div>
-<div class="mside-tree whitespace-pre">| -- > <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">parselineadv(haystack, line) <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">| Returns a <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">Parsed <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">struct for an entire specific line.</div>
+<div class="mside-tree whitespace-pre">| -- > parselineadv(haystack, line) | Returns a Parsed struct for a specific line, automatically parsing its signature and arguments if parentheses are present.</div>
+<div class="mside-tree whitespace-pre">| -- > freeconparsed(Parsed* p) | Iterates through conparsed and safely frees allocated memory.</div>
 <h2 class="text-2xl font-semibold text-sky-400 mt-12 mb-4">Logic & Navigation</h2>
-<p class="mb-6 leading-relaxed text-slate-300"><span class="bg-yellow-400/10 text-yellow-200 px-1 underline decoration-yellow-500/50">Search: `advparse` is the primary engine for iterating through multiple signatures in one buffer.</span></p>
-<p class="mb-6 leading-relaxed text-slate-300">* **advparse(haystack, skip)** : Scans for the <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">Nth <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">occurrence of a "prefix(content)suffix" pattern.</p>
-<p class="mb-6 leading-relaxed text-slate-300">* **_sp_get_line_ptr** : Internal helper to jump directly to a specific line number in a buffer.</p>
-<div class="mside-code rounded-xl p-6 my-8 text-sm text-sky-300 shadow-2xl"><pre><code>
-// Advanced Parsing Example
-const char* code = "print('hello'); print('world');";
-Parsed p = advparse(code, 1); 
-
-// Result for skip 1:
-// p.fullstr ->gt; "print('world');"
-// p.con     ->gt; "'world'"
-// p.line    ->gt; 1
-</code></pre></div>
-<p class="mb-6 leading-relaxed text-slate-300"><span class="bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-1 rounded text-sm font-bold">High Priority</span></p>
-<p class="mb-6 leading-relaxed text-slate-300"><span class="underline decoration-slate-600">All string fields in the <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">Parsed <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">struct have a fixed limit of 256 characters.</span></p>
-<div class="bg-red-500/20 border border-red-500/50 text-red-400 px-6 py-4 rounded-lg font-black my-8 text-center uppercase tracking-widest italic">Warning!!</div>
-<p class="mb-6 leading-relaxed text-slate-300"><span class="bg-yellow-400/10 text-yellow-200 px-1 underline decoration-yellow-500/50">Ensure the <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">haystack <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">buffer is null-terminated before passing it to any <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">SimpleParse <code class="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono">function to avoid memory overruns.</span></p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="bg-yellow-400/10 text-yellow-200 px-1 underline decoration-yellow-500/50">Advanced Extraction: parselineadv is the primary engine for identifying lines and extracting their contents in one pass.</span></p>
+<p class="mb-6 leading-relaxed text-slate-300">* Automatic Tokenization: When parselineadv detects parentheses (), it automatically populates the conparsed array by splitting content by commas.</p>
+<p class="mb-6 leading-relaxed text-slate-300">* Memory Management: Because conparsed stores heap-allocated integers and strings, always call freeconparsed(&p) after processing the struct.</p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="italic text-slate-400">Advanced Parsing Example</p>
+<p class="mb-6 leading-relaxed text-slate-300">const char* code = "something(1, \"Hello!\");";</p>
+<p class="mb-6 leading-relaxed text-slate-300">Parsed p = parselineadv(code, 1); </p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="italic text-slate-400">Accessing parsed arguments:</p>
+<p class="mb-6 leading-relaxed text-slate-300">int val = *(int*)p.conparsed[0];</p>
+<p class="mb-6 leading-relaxed text-slate-300">char* str = (char*)p.conparsed[1];</p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="italic text-slate-400">Cleanup after use:</p>
+<p class="mb-6 leading-relaxed text-slate-300">freeconparsed(&p);</p>
+<p class="mb-6 leading-relaxed text-slate-300">$$High Priority$$</p>
+<p class="mb-6 leading-relaxed text-slate-300">\ All string fields in the Parsed struct have a fixed limit of 256 characters. \</p>
+<p class="mb-6 leading-relaxed text-slate-300">\ The conparsed array supports up to 64 arguments. \</p>
+<p class="mb-6 leading-relaxed text-slate-300">$$$Warning!!$$$</p>
+<p class="mb-6 leading-relaxed text-slate-300"><span class="bg-yellow-400/10 text-yellow-200 px-1 underline decoration-yellow-500/50">Ensure the haystack buffer is null-terminated before passing it to any SimpleParse function to avoid memory overruns.</span></p>
 <hr class="my-20 border-slate-800"/>
 <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded font-bold my-8 inline-block uppercase tracking-widest text-xs">Module: SimpleThreads</div>
 <h1 class="text-4xl font-black text-white mt-20 mb-8 text-center border-b border-slate-800 pb-4">Module: SimpleThreads.h</h1>
