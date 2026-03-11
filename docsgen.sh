@@ -4,7 +4,7 @@ SOURCE_DOCS="Alldocs.mside"
 OUTPUT_DIR="docs"
 TAILWIND_FILE="$OUTPUT_DIR/tailwind.js"
 TAILWIND_URL="https://cdn.tailwindcss.com"
-TITLE="QOL Library | Mark-Sideways"
+TITLE="SimpleQOL Documentation"
 
 if [ ! -f "$SOURCE_DOCS" ]; then
     echo "Error: $SOURCE_DOCS not found. Run build.sh first."
@@ -128,7 +128,7 @@ echo "Rendering Mark-Sideways (.mside)..."
     ' "$SOURCE_DOCS"
 
     echo "</div><footer class='mt-32 border-t border-slate-900 p-16 text-center text-slate-600 text-[10px] tracking-[0.5em] uppercase'>"
-    echo "Built with Mark-Sideways & Tailwind CSS"
+    echo "Docuemntation written in Mark-Sidways"
     echo "</footer></body></html>"
 } > "$OUTPUT_DIR/docs.html"
 
