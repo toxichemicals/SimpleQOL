@@ -16,7 +16,8 @@ int main() {
     const char* script = 
         "// Init\n"                // Line 1
         "    myfunc(data);\n"      // Line 2 (4 spaces)
-        "exit();";                 // Line 3
+        "exit();\n"                // Line 3
+        "something(1, \"Hello!\");"; // Line 4
 
     printf("--- Simple_Parser Exhaustive Struct Test ---\n\n");
 
@@ -48,6 +49,11 @@ int main() {
     // 7. parselinecon()
     Parsed p_lc = parselinecon(script, 2, "myfunc(%%)");
     print_parsed("parselinecon Result", p_lc);
-
+    
+    // 8. conparsed from parselinecon()
+    Parsed coolio = parselineadv(script, 4);
+    int theint = *(int *)coolio.conparsed[0];
+    char *awesomestr = (char *)coolio.conparsed[1];
+    printf("Arg1: %d\nArg2: %s\n", theint, awesomestr);
     return 0;
 }
